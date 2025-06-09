@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(HospAI VERSION 0.1 LANGUAGES CXX)
+project(HospAI VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
@@ -9,115 +9,62 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Charts)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Sql Charts)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Charts Sql)
 
 set(PROJECT_SOURCES
         main.cpp
         mainwindow.cpp
-        mainwindow.h
-        mainwindow.ui
         
         # Core files
-        src/core/UserRole.h
-        src/core/ChatStorage.h
-        src/core/ChatStorage.cpp
+        src/core/DatabaseManager.cpp
         
         # Common view components  
-        src/views/common/BaseWindow.h
-        src/views/common/BaseWindow.cpp
-        src/views/common/SideMenuWidget.h
-        src/views/common/SideMenuWidget.cpp
-        src/views/common/TitleBarWidget.h
-        src/views/common/TitleBarWidget.cpp
-        src/views/common/RoleSelector.h
-        src/views/common/RoleSelector.cpp
-        src/views/common/HospitalNavigationWidget.h
-        src/views/common/HospitalNavigationWidget.cpp
-        src/views/common/UIStyleManager.h
         src/views/common/UIStyleManager.cpp
-        src/views/common/ExampleUsageWidget.h
-        src/views/common/ExampleUsageWidget.cpp
+        src/views/common/LoginDialog.cpp
+        src/views/common/RegisterDialog.cpp
         
         # Patient view components
-        src/views/patient/PatientWindow.h
-        src/views/patient/PatientWindow.cpp
-        src/views/patient/ChatWidget.h
         src/views/patient/ChatWidget.cpp
-        src/views/patient/FAQWidget.h
         src/views/patient/FAQWidget.cpp
-        src/views/patient/MapWidget.h
-        src/views/patient/MapWidget.cpp
+        src/views/patient/AppointmentWidget.cpp
+        src/views/patient/PatientMainWidget.cpp
         
         # Staff view components
-        src/views/staff/StaffWindow.h
-        src/views/staff/StaffWindow.cpp
-        src/views/staff/RecordWidget.h
-        src/views/staff/RecordWidget.cpp
-        src/views/staff/StatsWidget.h
         src/views/staff/StatsWidget.cpp
-        src/views/staff/ManualChatWidget.h
-        src/views/staff/ManualChatWidget.cpp
+        src/views/staff/StaffMainWidget.cpp
+        src/views/staff/ConsultationWidget.cpp
+        src/views/staff/KnowledgeBaseWidget.cpp
         
         # Admin view components
-        src/views/admin/AdminWindow.h
-        src/views/admin/AdminWindow.cpp
-        src/views/admin/UserManageWidget.h
         src/views/admin/UserManageWidget.cpp
-        src/views/admin/SystemStatsWidget.h
         src/views/admin/SystemStatsWidget.cpp
-        src/views/admin/SystemConfigWidget.h
         src/views/admin/SystemConfigWidget.cpp
-        src/views/admin/AuditLogWidget.h
         src/views/admin/AuditLogWidget.cpp
+        src/views/admin/AdminMainWidget.cpp
 )
 
-if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
-    qt_add_executable(HospAI
-        MANUAL_FINALIZATION
-        ${PROJECT_SOURCES}
-    )
-# Define target properties for Android with Qt 6 as:
-#    set_property(TARGET HospAI APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
-#                 ${CMAKE_CURRENT_SOURCE_DIR}/android)
-# For more information, see https://doc.qt.io/qt-6/qt-add-executable.html#target-creation
-else()
-    if(ANDROID)
-        add_library(HospAI SHARED
-            ${PROJECT_SOURCES}
-        )
-# Define properties for Android with Qt 5 after find_package() calls as:
-#    set(ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android")
-    else()
-        add_executable(HospAI
-            ${PROJECT_SOURCES}
-        )
-    endif()
-endif()
+qt_add_executable(HospAI
+    MANUAL_FINALIZATION
+    ${PROJECT_SOURCES}
+)
 
-target_link_libraries(HospAI PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Sql Qt${QT_VERSION_MAJOR}::Charts)
+target_link_libraries(HospAI PRIVATE Qt6::Core Qt6::Widgets Qt6::Charts Qt6::Sql)
 
-# Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
-# If you are developing for iOS or macOS you should consider setting an
-# explicit, fixed bundle identifier manually though.
-if(${QT_VERSION} VERSION_LESS 6.1.0)
-  set(BUNDLE_ID_OPTION MACOSX_BUNDLE_GUI_IDENTIFIER com.example.HospAI)
-endif()
 set_target_properties(HospAI PROPERTIES
-    ${BUNDLE_ID_OPTION}
-    MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
-    MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE TRUE
     WIN32_EXECUTABLE TRUE
+    MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
+    MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
 )
 
-include(GNUInstallDirs)
-install(TARGETS HospAI
-    BUNDLE DESTINATION .
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-)
+# 包含目录
+target_include_directories(HospAI PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
-if(QT_VERSION_MAJOR EQUAL 6)
-    qt_finalize_executable(HospAI)
+# 编译器特定设置
+if(MSVC)
+    target_compile_options(HospAI PRIVATE /W4)
+else()
+    target_compile_options(HospAI PRIVATE -Wall -Wextra -Wpedantic)
 endif()
+
+qt_finalize_executable(HospAI)

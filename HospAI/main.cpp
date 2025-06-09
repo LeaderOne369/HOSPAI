@@ -5,6 +5,8 @@
 #include "mainwindow.h"
 #include "src/views/common/ExampleUsageWidget.h"
 #include "src/views/common/UIStyleManager.h"
+#include "src/core/DatabaseManager.h"
+#include "src/views/common/LoginDialog.h"
 #include <QApplication>
 #include <QStyleFactory>
 #include <QMessageBox>
@@ -12,6 +14,9 @@
 #include <QVBoxLayout>
 #include <QDialog>
 #include <QSysInfo>
+#include <QDebug>
+#include <QTranslator>
+#include <QLibraryInfo>
 
 // 创建一个启动选择对话框
 class StartupDialog : public QDialog
@@ -82,75 +87,47 @@ private:
 
 int main(int argc, char *argv[])
 {
-    QApplication app(argc, argv);
+    QApplication a(argc, argv);
     
     // 设置应用程序信息
-    app.setApplicationName("HospAI");
-    app.setApplicationVersion("1.0");
-    app.setOrganizationName("Hospital AI Team");
+    a.setApplicationName("HospAI");
+    a.setApplicationVersion("1.0.0");
+    a.setOrganizationName("HospAI Team");
+    a.setOrganizationDomain("hospai.com");
     
-    // 应用全局样式
-    UIStyleManager::applyGlobalStyleSheet(&app);
+    // 设置中文字体
+    QFont font("Microsoft YaHei", 9);
+    a.setFont(font);
     
-    // 显示启动选择对话框
-    StartupDialog startupDialog;
-    if (startupDialog.exec() != QDialog::Accepted) {
-        return 0; // 用户选择退出
+    // 初始化数据库
+    DatabaseManager* dbManager = DatabaseManager::instance();
+    if (!dbManager->initDatabase()) {
+        QMessageBox::critical(nullptr, "数据库错误", 
+                            "无法初始化数据库！\n应用程序将退出。");
+        return -1;
     }
     
-    if (startupDialog.getSelectedMode() == StartupDialog::DemoApp) {
-        // 启动功能演示程序
-        ExampleUsageWidget *example = new ExampleUsageWidget();
-        example->setWindowTitle("🏥 HospAI - 新功能演示");
-        example->resize(1200, 800);
-        example->show();
-        
-        return app.exec();
-    } else {
-        // 启动原始的医院智慧客服系统
-        app.setApplicationName("医院智慧客服系统");
-        app.setApplicationVersion("1.0.0");
-        app.setOrganizationName("医院信息科");
-        
-        // 显示角色选择器
-        RoleSelector roleSelector;
-        if (roleSelector.exec() != QDialog::Accepted) {
-            return 0; // 用户取消选择
-        }
-        
-        UserRole selectedRole = roleSelector.getSelectedRole();
-        
-        // 根据选择的角色创建相应的窗口
-        BaseWindow* mainWindow = nullptr;
-        
-        switch (selectedRole) {
-        case UserRole::Patient:
-            mainWindow = new PatientWindow;
-            break;
-        case UserRole::Staff:
-            mainWindow = new StaffWindow;
-            break;
-        case UserRole::Admin:
-            mainWindow = new AdminWindow;
-            break;
-        }
-        
-        if (mainWindow) {
-            mainWindow->show();
-            
-            // 连接退出登录信号
-            QObject::connect(mainWindow, &BaseWindow::logoutRequested, [&]() {
-                mainWindow->close();
-                app.quit();
-            });
-            
-            int result = app.exec();
-            delete mainWindow;
-            return result;
-        }
+    qDebug() << "数据库初始化成功";
+    
+    // 显示登录对话框
+    LoginDialog loginDialog;
+    
+    // 如果登录失败，退出应用程序
+    if (loginDialog.exec() != QDialog::Accepted) {
+        qDebug() << "用户取消登录，应用程序退出";
+        return 0;
     }
     
-    return 0;
+    // 获取登录用户信息
+    UserInfo currentUser = loginDialog.getLoggedInUser();
+    qDebug() << "用户登录成功:" << currentUser.username << "角色:" << currentUser.role;
+    
+    // 根据用户角色创建相应的主窗口
+    MainWindow w;
+    w.setCurrentUser(currentUser);
+    w.show();
+    
+    return a.exec();
 }
 
 #include "main.moc"
