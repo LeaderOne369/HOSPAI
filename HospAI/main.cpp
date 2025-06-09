@@ -1,6 +1,7 @@
 #include "src/views/common/RoleSelector.h"
 #include "src/views/patient/PatientWindow.h"
 #include "src/views/staff/StaffWindow.h"
+#include "src/views/admin/AdminWindow.h"
 #include "mainwindow.h"
 #include "src/views/common/ExampleUsageWidget.h"
 #include "src/views/common/UIStyleManager.h"
@@ -10,6 +11,7 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QDialog>
+#include <QSysInfo>
 
 // 创建一个启动选择对话框
 class StartupDialog : public QDialog
@@ -129,9 +131,7 @@ int main(int argc, char *argv[])
             mainWindow = new StaffWindow;
             break;
         case UserRole::Admin:
-            // 暂时使用患者端作为占位符
-            QMessageBox::information(nullptr, "提示", "管理端界面正在开发中，将显示患者端界面");
-            mainWindow = new PatientWindow;
+            mainWindow = new AdminWindow;
             break;
         }
         

@@ -28,7 +28,12 @@
 #include <QtCharts/QPieSeries>
 #include <QtCharts/QValueAxis>
 #include <QtCharts/QBarCategoryAxis>
-QT_CHARTS_USE_NAMESPACE
+
+// 前向声明
+QT_BEGIN_NAMESPACE
+class QChartView;
+class QChart;
+QT_END_NAMESPACE
 #endif
 
 // 时间范围枚举
