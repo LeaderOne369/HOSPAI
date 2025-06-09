@@ -95,9 +95,11 @@ int main(int argc, char *argv[])
     a.setOrganizationName("HospAI Team");
     a.setOrganizationDomain("hospai.com");
     
-    // 设置中文字体
-    QFont font("Microsoft YaHei", 9);
-    a.setFont(font);
+    // 跨平台字体设置，会在 UIStyleManager 中进一步优化
+    UIStyleManager::setupFonts();
+    
+    // 应用跨平台优化的全局样式
+    UIStyleManager::applyGlobalStyleSheet(&a);
     
     // 初始化数据库
     DatabaseManager* dbManager = DatabaseManager::instance();
@@ -124,6 +126,7 @@ int main(int argc, char *argv[])
     
     // 根据用户角色创建相应的主窗口
     MainWindow w;
+    w.setDatabaseManager(dbManager);
     w.setCurrentUser(currentUser);
     w.show();
     

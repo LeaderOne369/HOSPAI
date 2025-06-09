@@ -91,9 +91,64 @@ bool DatabaseManager::createTables()
         return false;
     }
     
+    // 创建聊天会话表
+    QString createSessionsTable = R"(
+        CREATE TABLE IF NOT EXISTS chat_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            patient_id INTEGER NOT NULL,
+            staff_id INTEGER DEFAULT 0,
+            patient_name VARCHAR(50),
+            staff_name VARCHAR(50),
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            last_message_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            status INTEGER DEFAULT 2,
+            last_message TEXT,
+            FOREIGN KEY (patient_id) REFERENCES users(id),
+            FOREIGN KEY (staff_id) REFERENCES users(id)
+        )
+    )";
+    
+    if (!query.exec(createSessionsTable)) {
+        qDebug() << "创建聊天会话表失败:" << query.lastError().text();
+        return false;
+    }
+    
+    // 创建聊天消息表
+    QString createMessagesTable = R"(
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id INTEGER NOT NULL,
+            sender_id INTEGER NOT NULL,
+            sender_name VARCHAR(50),
+            sender_role VARCHAR(20),
+            content TEXT NOT NULL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            message_type INTEGER DEFAULT 0,
+            is_read INTEGER DEFAULT 0,
+            FOREIGN KEY (session_id) REFERENCES chat_sessions(id),
+            FOREIGN KEY (sender_id) REFERENCES users(id)
+        )
+    )";
+    
+    if (!query.exec(createMessagesTable)) {
+        qDebug() << "创建聊天消息表失败:" << query.lastError().text();
+        return false;
+    }
+    
+    // 在用户表中添加在线状态字段（如果不存在）
+    query.exec("ALTER TABLE users ADD COLUMN is_online INTEGER DEFAULT 0");
+    
     // 创建默认管理员账户（如果不存在）
     if (!isUsernameExists("admin")) {
         registerUser("admin", "admin123", "admin@hospai.com", "", "管理员", "系统管理员");
+    }
+    
+    // 创建测试客服账户
+    if (!isUsernameExists("staff1")) {
+        registerUser("staff1", "123456", "staff1@hospai.com", "", "客服", "客服小王");
+    }
+    if (!isUsernameExists("staff2")) {
+        registerUser("staff2", "123456", "staff2@hospai.com", "", "客服", "客服小李");
     }
     
     return true;
@@ -186,6 +241,521 @@ bool DatabaseManager::updateLastLogin(int userId)
     query.addBindValue(userId);
     
     return query.exec();
+}
+
+// ========== 聊天会话管理 ==========
+
+int DatabaseManager::createChatSession(int patientId, int staffId)
+{
+    UserInfo patient = getUserInfo(patientId);
+    QString patientName = patient.realName.isEmpty() ? patient.username : patient.realName;
+    
+    QString staffName = "";
+    if (staffId > 0) {
+        UserInfo staff = getUserInfo(staffId);
+        staffName = staff.realName.isEmpty() ? staff.username : staff.realName;
+    }
+    
+    QSqlQuery query(m_database);
+    query.prepare(R"(
+        INSERT INTO chat_sessions (patient_id, staff_id, patient_name, staff_name, status)
+        VALUES (?, ?, ?, ?, ?)
+    )");
+    
+    query.addBindValue(patientId);
+    query.addBindValue(staffId > 0 ? staffId : QVariant());
+    query.addBindValue(patientName);
+    query.addBindValue(staffName);
+    query.addBindValue(staffId > 0 ? 1 : 2); // 1-进行中, 2-等待中
+    
+    if (query.exec()) {
+        int sessionId = query.lastInsertId().toInt();
+        
+        // 发送系统消息
+        QString systemMsg = staffId > 0 ? 
+            QString("客服 %1 已接入对话").arg(staffName) :
+            "您好！请描述您的问题，我们会尽快为您安排客服。";
+        sendMessage(sessionId, 0, systemMsg, 1); // 系统消息
+        
+        // 发送信号
+        ChatSession session = getChatSession(sessionId);
+        emit sessionCreated(session);
+        
+        return sessionId;
+    }
+    
+    return -1;
+}
+
+bool DatabaseManager::updateChatSession(int sessionId, int staffId)
+{
+    UserInfo staff = getUserInfo(staffId);
+    QString staffName = staff.realName.isEmpty() ? staff.username : staff.realName;
+    
+    QSqlQuery query(m_database);
+    query.prepare(R"(
+        UPDATE chat_sessions 
+        SET staff_id = ?, staff_name = ?, status = 1, last_message_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    )");
+    
+    query.addBindValue(staffId);
+    query.addBindValue(staffName);
+    query.addBindValue(sessionId);
+    
+    if (query.exec()) {
+        // 发送系统消息
+        sendMessage(sessionId, 0, QString("客服 %1 已接入对话").arg(staffName), 1);
+        
+        // 发送信号
+        ChatSession session = getChatSession(sessionId);
+        emit sessionUpdated(session);
+        
+        return true;
+    }
+    
+    return false;
+}
+
+bool DatabaseManager::closeChatSession(int sessionId)
+{
+    QSqlQuery query(m_database);
+    query.prepare(R"(
+        UPDATE chat_sessions 
+        SET status = 0, last_message_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    )");
+    
+    query.addBindValue(sessionId);
+    
+    if (query.exec()) {
+        // 发送系统消息
+        sendMessage(sessionId, 0, "对话已结束，感谢您的咨询！", 1);
+        
+        // 发送信号
+        ChatSession session = getChatSession(sessionId);
+        emit sessionUpdated(session);
+        
+        return true;
+    }
+    
+    return false;
+}
+
+QList<ChatSession> DatabaseManager::getActiveSessions()
+{
+    QList<ChatSession> sessions;
+    
+    QSqlQuery query(m_database);
+    query.prepare(R"(
+        SELECT id, patient_id, staff_id, patient_name, staff_name, 
+               created_at, last_message_at, status, last_message
+        FROM chat_sessions 
+        WHERE status > 0
+        ORDER BY last_message_at DESC
+    )");
+    
+    if (query.exec()) {
+        while (query.next()) {
+            ChatSession session;
+            session.id = query.value("id").toInt();
+            session.patientId = query.value("patient_id").toInt();
+            session.staffId = query.value("staff_id").toInt();
+            session.patientName = query.value("patient_name").toString();
+            session.staffName = query.value("staff_name").toString();
+            session.createdAt = query.value("created_at").toDateTime();
+            session.lastMessageAt = query.value("last_message_at").toDateTime();
+            session.status = query.value("status").toInt();
+            session.lastMessage = query.value("last_message").toString();
+            
+            sessions.append(session);
+        }
+    }
+    
+    return sessions;
+}
+
+QList<ChatSession> DatabaseManager::getPatientSessions(int patientId)
+{
+    QList<ChatSession> sessions;
+    
+    QSqlQuery query(m_database);
+    query.prepare(R"(
+        SELECT id, patient_id, staff_id, patient_name, staff_name, 
+               created_at, last_message_at, status, last_message
+        FROM chat_sessions 
+        WHERE patient_id = ?
+        ORDER BY last_message_at DESC
+    )");
+    
+    query.addBindValue(patientId);
+    
+    if (query.exec()) {
+        while (query.next()) {
+            ChatSession session;
+            session.id = query.value("id").toInt();
+            session.patientId = query.value("patient_id").toInt();
+            session.staffId = query.value("staff_id").toInt();
+            session.patientName = query.value("patient_name").toString();
+            session.staffName = query.value("staff_name").toString();
+            session.createdAt = query.value("created_at").toDateTime();
+            session.lastMessageAt = query.value("last_message_at").toDateTime();
+            session.status = query.value("status").toInt();
+            session.lastMessage = query.value("last_message").toString();
+            
+            sessions.append(session);
+        }
+    }
+    
+    return sessions;
+}
+
+QList<ChatSession> DatabaseManager::getStaffSessions(int staffId)
+{
+    QList<ChatSession> sessions;
+    
+    QSqlQuery query(m_database);
+    query.prepare(R"(
+        SELECT id, patient_id, staff_id, patient_name, staff_name, 
+               created_at, last_message_at, status, last_message
+        FROM chat_sessions 
+        WHERE staff_id = ? AND status > 0
+        ORDER BY last_message_at DESC
+    )");
+    
+    query.addBindValue(staffId);
+    
+    if (query.exec()) {
+        while (query.next()) {
+            ChatSession session;
+            session.id = query.value("id").toInt();
+            session.patientId = query.value("patient_id").toInt();
+            session.staffId = query.value("staff_id").toInt();
+            session.patientName = query.value("patient_name").toString();
+            session.staffName = query.value("staff_name").toString();
+            session.createdAt = query.value("created_at").toDateTime();
+            session.lastMessageAt = query.value("last_message_at").toDateTime();
+            session.status = query.value("status").toInt();
+            session.lastMessage = query.value("last_message").toString();
+            
+            sessions.append(session);
+        }
+    }
+    
+    return sessions;
+}
+
+ChatSession DatabaseManager::getChatSession(int sessionId)
+{
+    ChatSession session;
+    
+    QSqlQuery query(m_database);
+    query.prepare(R"(
+        SELECT id, patient_id, staff_id, patient_name, staff_name, 
+               created_at, last_message_at, status, last_message
+        FROM chat_sessions 
+        WHERE id = ?
+    )");
+    
+    query.addBindValue(sessionId);
+    
+    if (query.exec() && query.next()) {
+        session.id = query.value("id").toInt();
+        session.patientId = query.value("patient_id").toInt();
+        session.staffId = query.value("staff_id").toInt();
+        session.patientName = query.value("patient_name").toString();
+        session.staffName = query.value("staff_name").toString();
+        session.createdAt = query.value("created_at").toDateTime();
+        session.lastMessageAt = query.value("last_message_at").toDateTime();
+        session.status = query.value("status").toInt();
+        session.lastMessage = query.value("last_message").toString();
+    }
+    
+    return session;
+}
+
+// ========== 聊天消息管理 ==========
+
+int DatabaseManager::sendMessage(int sessionId, int senderId, const QString& content, int messageType)
+{
+    QString senderName = "系统";
+    QString senderRole = "system";
+    
+    if (senderId > 0) {
+        UserInfo sender = getUserInfo(senderId);
+        senderName = sender.realName.isEmpty() ? sender.username : sender.realName;
+        senderRole = sender.role;
+    }
+    
+    QSqlQuery query(m_database);
+    query.prepare(R"(
+        INSERT INTO chat_messages (session_id, sender_id, sender_name, sender_role, content, message_type)
+        VALUES (?, ?, ?, ?, ?, ?)
+    )");
+    
+    query.addBindValue(sessionId);
+    query.addBindValue(senderId);
+    query.addBindValue(senderName);
+    query.addBindValue(senderRole);
+    query.addBindValue(content);
+    query.addBindValue(messageType);
+    
+    if (query.exec()) {
+        int messageId = query.lastInsertId().toInt();
+        
+        // 更新会话的最后消息时间和内容
+        QSqlQuery updateQuery(m_database);
+        updateQuery.prepare(R"(
+            UPDATE chat_sessions 
+            SET last_message_at = CURRENT_TIMESTAMP, last_message = ?
+            WHERE id = ?
+        )");
+        updateQuery.addBindValue(content);
+        updateQuery.addBindValue(sessionId);
+        updateQuery.exec();
+        
+        // 获取完整消息信息并发送信号
+        ChatMessage message;
+        message.id = messageId;
+        message.sessionId = sessionId;
+        message.senderId = senderId;
+        message.senderName = senderName;
+        message.senderRole = senderRole;
+        message.content = content;
+        message.timestamp = QDateTime::currentDateTime();
+        message.messageType = messageType;
+        message.isRead = 0;
+        
+        emit newMessageReceived(message);
+        
+        return messageId;
+    }
+    
+    return -1;
+}
+
+QList<ChatMessage> DatabaseManager::getChatMessages(int sessionId, int limit)
+{
+    QList<ChatMessage> messages;
+    
+    QSqlQuery query(m_database);
+    query.prepare(R"(
+        SELECT id, session_id, sender_id, sender_name, sender_role, 
+               content, timestamp, message_type, is_read
+        FROM chat_messages 
+        WHERE session_id = ?
+        ORDER BY timestamp ASC
+        LIMIT ?
+    )");
+    
+    query.addBindValue(sessionId);
+    query.addBindValue(limit);
+    
+    if (query.exec()) {
+        while (query.next()) {
+            ChatMessage message;
+            message.id = query.value("id").toInt();
+            message.sessionId = query.value("session_id").toInt();
+            message.senderId = query.value("sender_id").toInt();
+            message.senderName = query.value("sender_name").toString();
+            message.senderRole = query.value("sender_role").toString();
+            message.content = query.value("content").toString();
+            message.timestamp = query.value("timestamp").toDateTime();
+            message.messageType = query.value("message_type").toInt();
+            message.isRead = query.value("is_read").toInt();
+            
+            messages.append(message);
+        }
+    }
+    
+    return messages;
+}
+
+QList<ChatMessage> DatabaseManager::getUnreadMessages(int userId)
+{
+    QList<ChatMessage> messages;
+    
+    QSqlQuery query(m_database);
+    query.prepare(R"(
+        SELECT m.id, m.session_id, m.sender_id, m.sender_name, m.sender_role, 
+               m.content, m.timestamp, m.message_type, m.is_read
+        FROM chat_messages m
+        JOIN chat_sessions s ON m.session_id = s.id
+        WHERE (s.patient_id = ? OR s.staff_id = ?) 
+        AND m.sender_id != ? 
+        AND m.is_read = 0
+        ORDER BY m.timestamp ASC
+    )");
+    
+    query.addBindValue(userId);
+    query.addBindValue(userId);
+    query.addBindValue(userId);
+    
+    if (query.exec()) {
+        while (query.next()) {
+            ChatMessage message;
+            message.id = query.value("id").toInt();
+            message.sessionId = query.value("session_id").toInt();
+            message.senderId = query.value("sender_id").toInt();
+            message.senderName = query.value("sender_name").toString();
+            message.senderRole = query.value("sender_role").toString();
+            message.content = query.value("content").toString();
+            message.timestamp = query.value("timestamp").toDateTime();
+            message.messageType = query.value("message_type").toInt();
+            message.isRead = query.value("is_read").toInt();
+            
+            messages.append(message);
+        }
+    }
+    
+    return messages;
+}
+
+bool DatabaseManager::markMessageAsRead(int messageId)
+{
+    QSqlQuery query(m_database);
+    query.prepare("UPDATE chat_messages SET is_read = 1 WHERE id = ?");
+    query.addBindValue(messageId);
+    
+    return query.exec();
+}
+
+bool DatabaseManager::markSessionAsRead(int sessionId, int userId)
+{
+    QSqlQuery query(m_database);
+    query.prepare(R"(
+        UPDATE chat_messages 
+        SET is_read = 1 
+        WHERE session_id = ? AND sender_id != ?
+    )");
+    
+    query.addBindValue(sessionId);
+    query.addBindValue(userId);
+    
+    return query.exec();
+}
+
+// ========== 在线状态管理 ==========
+
+bool DatabaseManager::updateUserOnlineStatus(int userId, bool isOnline)
+{
+    QSqlQuery query(m_database);
+    query.prepare("UPDATE users SET is_online = ? WHERE id = ?");
+    query.addBindValue(isOnline ? 1 : 0);
+    query.addBindValue(userId);
+    
+    if (query.exec()) {
+        emit userOnlineStatusChanged(userId, isOnline);
+        return true;
+    }
+    
+    return false;
+}
+
+QList<UserInfo> DatabaseManager::getOnlineStaff()
+{
+    QList<UserInfo> staffList;
+    
+    QSqlQuery query(m_database);
+    query.prepare(R"(
+        SELECT id, username, email, phone, role, real_name, 
+               created_at, last_login, status, avatar_path
+        FROM users 
+        WHERE role = '客服' AND is_online = 1 AND status = 1
+        ORDER BY last_login DESC
+    )");
+    
+    if (query.exec()) {
+        while (query.next()) {
+            UserInfo user;
+            user.id = query.value("id").toInt();
+            user.username = query.value("username").toString();
+            user.email = query.value("email").toString();
+            user.phone = query.value("phone").toString();
+            user.role = query.value("role").toString();
+            user.realName = query.value("real_name").toString();
+            user.createdAt = query.value("created_at").toDateTime();
+            user.lastLogin = query.value("last_login").toDateTime();
+            user.status = query.value("status").toInt();
+            user.avatarPath = query.value("avatar_path").toString();
+            
+            staffList.append(user);
+        }
+    }
+    
+    return staffList;
+}
+
+// ========== 用户列表获取 ==========
+
+QList<UserInfo> DatabaseManager::getAllUsers()
+{
+    QList<UserInfo> users;
+    
+    QSqlQuery query(m_database);
+    query.prepare(R"(
+        SELECT id, username, email, phone, role, real_name, 
+               created_at, last_login, status, avatar_path
+        FROM users 
+        WHERE status = 1
+        ORDER BY created_at DESC
+    )");
+    
+    if (query.exec()) {
+        while (query.next()) {
+            UserInfo user;
+            user.id = query.value("id").toInt();
+            user.username = query.value("username").toString();
+            user.email = query.value("email").toString();
+            user.phone = query.value("phone").toString();
+            user.role = query.value("role").toString();
+            user.realName = query.value("real_name").toString();
+            user.createdAt = query.value("created_at").toDateTime();
+            user.lastLogin = query.value("last_login").toDateTime();
+            user.status = query.value("status").toInt();
+            user.avatarPath = query.value("avatar_path").toString();
+            
+            users.append(user);
+        }
+    }
+    
+    return users;
+}
+
+QList<UserInfo> DatabaseManager::getUsersByRole(const QString& role)
+{
+    QList<UserInfo> users;
+    
+    QSqlQuery query(m_database);
+    query.prepare(R"(
+        SELECT id, username, email, phone, role, real_name, 
+               created_at, last_login, status, avatar_path
+        FROM users 
+        WHERE role = ? AND status = 1
+        ORDER BY created_at DESC
+    )");
+    
+    query.addBindValue(role);
+    
+    if (query.exec()) {
+        while (query.next()) {
+            UserInfo user;
+            user.id = query.value("id").toInt();
+            user.username = query.value("username").toString();
+            user.email = query.value("email").toString();
+            user.phone = query.value("phone").toString();
+            user.role = query.value("role").toString();
+            user.realName = query.value("real_name").toString();
+            user.createdAt = query.value("created_at").toDateTime();
+            user.lastLogin = query.value("last_login").toDateTime();
+            user.status = query.value("status").toInt();
+            user.avatarPath = query.value("avatar_path").toString();
+            
+            users.append(user);
+        }
+    }
+    
+    return users;
 }
 
 bool DatabaseManager::isUsernameExists(const QString& username)

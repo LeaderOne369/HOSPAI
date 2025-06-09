@@ -5,6 +5,9 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGridLayout>
+#include <QScreen>
+#include <QSysInfo>
+#include <QDebug>
 
 // 静态成员初始化
 UIStyleManager::ColorScheme UIStyleManager::colors;
@@ -21,18 +24,54 @@ UIStyleManager::~UIStyleManager()
 void UIStyleManager::applyGlobalStyleSheet(QApplication *app)
 {
     setupFonts();
+    optimizeForHighDPI(app);
     app->setStyleSheet(getGlobalStyleSheet());
+}
+
+void UIStyleManager::optimizeForHighDPI(QApplication *app)
+{
+    // Qt6 中高DPI缩放默认开启，只在Qt5中需要手动设置
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    #if QT_VERSION >= QT_VERSION_CHECK(5, 6, 0)
+        app->setAttribute(Qt::AA_EnableHighDpiScaling, true);
+        app->setAttribute(Qt::AA_UseHighDpiPixmaps, true);
+    #endif
+    
+    #if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+        app->setHighDpiScaleFactorRoundingPolicy(Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
+    #endif
+#endif
+
+    // 获取屏幕DPI信息用于调试和微调
+    QScreen *screen = app->primaryScreen();
+    if (screen) {
+        qreal dpi = screen->logicalDotsPerInch();
+        qreal scale = dpi / 96.0; // 96 DPI 为标准
+        
+        qDebug() << "屏幕DPI:" << dpi << "缩放比例:" << scale << "平台:" << QSysInfo::productType();
+        
+        // 在高DPI显示器上微调字体大小
+        if (scale > 1.5) {
+            QFont font = app->font();
+            int newSize = qRound(font.pointSize() * 1.1);
+            font.setPointSize(newSize);
+            app->setFont(font);
+            qDebug() << "高DPI模式: 调整字体大小为" << newSize;
+        }
+    }
 }
 
 QString UIStyleManager::getGlobalStyleSheet()
 {
     return QString(
-        // 全局样式
+        // 跨平台全局样式
         "QWidget {"
         "    color: %1;"
-        "    font-family: 'Microsoft YaHei', 'Segoe UI', Arial, sans-serif;"
+        "    font-family: system-ui, -apple-system, 'Segoe UI', 'Microsoft YaHei UI', 'Ubuntu', 'Noto Sans CJK SC', sans-serif;"
         "    font-size: 14px;"
         "    background-color: %2;"
+        "    selection-background-color: %5;"
+        "    selection-color: white;"
         "}"
         
         // 主窗口样式
@@ -41,30 +80,32 @@ QString UIStyleManager::getGlobalStyleSheet()
         "    border: none;"
         "}"
         
-        // 按钮样式
+        // 跨平台按钮样式
         "QPushButton {"
         "    background-color: %3;"
-        "    border: 2px solid %4;"
-        "    border-radius: 8px;"
-        "    padding: 10px 20px;"
+        "    border: 1px solid %4;"
+        "    border-radius: 6px;"
+        "    padding: 8px 16px;"
         "    font-size: 14px;"
         "    font-weight: 500;"
         "    color: %1;"
-        "    min-height: 20px;"
+        "    min-height: 24px;"
+        "    outline: none;"
         "}"
         "QPushButton:hover {"
-        "    background-color: %5;"
-        "    color: white;"
+        "    background-color: %9;"
         "    border-color: %5;"
         "}"
         "QPushButton:pressed {"
-        "    background-color: %6;"
+        "    background-color: %5;"
         "    border-color: %6;"
+        "    color: white;"
         "}"
         "QPushButton:disabled {"
         "    background-color: %7;"
         "    color: %8;"
         "    border-color: %7;"
+        "    opacity: 0.6;"
         "}"
         
         // 标签样式
@@ -75,18 +116,22 @@ QString UIStyleManager::getGlobalStyleSheet()
         "    padding: 5px;"
         "}"
         
-        // 输入框样式
+        // 跨平台输入框样式
         "QLineEdit {"
         "    background-color: %3;"
-        "    border: 2px solid %4;"
-        "    border-radius: 6px;"
+        "    border: 1px solid %4;"
+        "    border-radius: 4px;"
         "    padding: 8px 12px;"
         "    font-size: 14px;"
         "    color: %1;"
+        "    outline: none;"
         "}"
         "QLineEdit:focus {"
         "    border-color: %5;"
-        "    outline: none;"
+        "    border-width: 2px;"
+        "}"
+        "QLineEdit:hover {"
+        "    border-color: %5;"
         "}"
         
         // 文本编辑器样式
@@ -201,26 +246,30 @@ QString UIStyleManager::getGlobalStyleSheet()
         "    font-weight: bold;"
         "}"
         
-        // 选项卡样式
+        // 跨平台选项卡样式
         "QTabWidget::pane {"
         "    border: 1px solid %4;"
-        "    border-radius: 6px;"
+        "    border-radius: 4px;"
         "    background-color: %3;"
+        "    margin-top: -1px;"
         "}"
         "QTabBar::tab {"
         "    background-color: %2;"
         "    border: 1px solid %4;"
-        "    padding: 8px 16px;"
+        "    padding: 10px 16px;"
         "    margin-right: 2px;"
-        "    border-radius: 6px 6px 0 0;"
+        "    border-radius: 4px 4px 0 0;"
+        "    min-width: 80px;"
+        "    font-size: 14px;"
         "}"
         "QTabBar::tab:selected {"
-        "    background-color: %5;"
-        "    color: white;"
-        "    border-bottom-color: %5;"
+        "    background-color: %3;"
+        "    border-bottom-color: %3;"
+        "    font-weight: 600;"
+        "    color: %5;"
         "}"
-        "QTabBar::tab:hover {"
-        "    background-color: %7;"
+        "QTabBar::tab:hover:!selected {"
+        "    background-color: %9;"
         "}"
         
         // 工具提示样式
@@ -238,27 +287,50 @@ QString UIStyleManager::getGlobalStyleSheet()
     .arg(colors.surface)      // %3 - 表面色
     .arg(colors.border)       // %4 - 边框色
     .arg(colors.primary)      // %5 - 主色调
-    .arg(colors.primaryDark)  // %6 - 深蓝色
+    .arg(colors.primaryDark)  // %6 - 深橙色
     .arg(colors.secondary)    // %7 - 次要色
-    .arg(colors.textSecondary); // %8 - 次要文字色
+    .arg(colors.textSecondary) // %8 - 次要文字色
+    .arg(colors.hover);       // %9 - 悬停背景
 }
 
 void UIStyleManager::setupFonts()
 {
     QFont defaultFont;
     
-    // 尝试设置微软雅黑字体
-    QStringList fontFamilies = {"Microsoft YaHei", "Segoe UI", "Arial", "Helvetica", "sans-serif"};
+    // 跨平台字体选择策略
+    QStringList fontFamilies;
+    
+#ifdef Q_OS_WIN
+    // Windows 字体优先级
+    fontFamilies = {"Microsoft YaHei UI", "Microsoft YaHei", "Segoe UI", "Arial", "sans-serif"};
+#elif defined(Q_OS_MAC)
+    // macOS 字体优先级
+    fontFamilies = {"PingFang SC", "Helvetica Neue", "San Francisco", "Arial", "sans-serif"};
+#else
+    // Linux/Ubuntu 字体优先级
+    fontFamilies = {"Ubuntu", "Noto Sans CJK SC", "Source Han Sans SC", 
+                    "WenQuanYi Micro Hei", "DejaVu Sans", "Liberation Sans", "Arial", "sans-serif"};
+#endif
     
     for (const QString &family : fontFamilies) {
         if (QFontDatabase::families().contains(family)) {
             defaultFont.setFamily(family);
+            qDebug() << "选择字体:" << family << "平台:" << QSysInfo::productType();
             break;
         }
     }
     
-    defaultFont.setPointSize(10);
+    // 跨平台字体大小设置
+#ifdef Q_OS_WIN
+    defaultFont.setPointSize(9);  // Windows 使用较小字体
+#elif defined(Q_OS_MAC)
+    defaultFont.setPointSize(13); // macOS 使用较大字体
+#else
+    defaultFont.setPointSize(10); // Linux 使用中等字体
+#endif
+    
     defaultFont.setWeight(QFont::Normal);
+    defaultFont.setHintingPreference(QFont::PreferFullHinting);
     
     QApplication::setFont(defaultFont);
 }

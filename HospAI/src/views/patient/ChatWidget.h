@@ -18,6 +18,8 @@
 #include <QSqlQuery>
 #include <QButtonGroup>
 #include <QGroupBox>
+#include "../../core/DatabaseManager.h"
+#include "../../core/AIApiClient.h"
 
 // 消息类型枚举
 enum class MessageType {
@@ -27,8 +29,8 @@ enum class MessageType {
     QuickReply      // 快捷回复
 };
 
-// 消息结构体
-struct ChatMessage {
+// AI分诊消息结构体
+struct AIMessage {
     QString content;
     MessageType type;
     QDateTime timestamp;
@@ -51,20 +53,29 @@ class ChatWidget : public QWidget
 public:
     explicit ChatWidget(QWidget *parent = nullptr);
     ~ChatWidget();
+    
+    void setDatabaseManager(DatabaseManager* dbManager);
+    void setUserInfo(const QString& userId, const QString& userName);
+
+signals:
+    void requestHumanService(const QString& userId, const QString& userName, const QString& context);
 
 private slots:
     // 消息发送相关
     void onSendMessage();
-    void onQuickButtonClicked();
+    void onQuickButtonClicked(QAbstractButton* button);
     void onInputTextChanged();
     
     // AI响应相关
     void onAIResponseReady();
     void simulateTyping();
+    void onAITriageResponse(const AIDiagnosisResult& result);
+    void onAIApiError(const QString& error);
     
     // 交互按钮相关
     void onActionButtonClicked();
     void onDepartmentSelected();
+    void onTransferToHuman();  // 转人工服务
     
     // 功能按钮相关
     void onClearChatClicked();
@@ -80,8 +91,8 @@ private:
     void setupToolBar();
     
     // 消息处理
-    void addMessage(const ChatMessage& message);
-    void displayMessage(const ChatMessage& message);
+    void addMessage(const AIMessage& message);
+    void displayMessage(const AIMessage& message);
     void scrollToBottom();
     
     // AI分诊逻辑
@@ -97,6 +108,7 @@ private:
     // 交互组件
     void addActionButtons(const QStringList& actions);
     void addDepartmentSelector(const QStringList& departments);
+    void addTransferOption();  // 添加转人工选项
     void clearInteractionComponents();
     
     // 数据库操作
@@ -148,9 +160,10 @@ private:
     QTimer* m_responseTimer;     // 模拟AI响应延迟
     QString m_pendingResponse;   // 待发送的AI响应
     bool m_isAITyping;          // AI是否正在输入
+    AIApiClient* m_aiApiClient;  // AI API客户端
     
     // 数据存储
-    QList<ChatMessage> m_chatHistory;
+    QList<AIMessage> m_chatHistory;
     QString m_currentSessionId;
     QSqlDatabase m_database;
     
@@ -162,6 +175,9 @@ private:
     bool m_isInitialized;
     int m_messageCount;
     QString m_currentContext;    // 当前对话上下文
+    QString m_userId;
+    QString m_userName;
+    DatabaseManager* m_dbManager;
 };
 
 #endif // CHATWIDGET_H 

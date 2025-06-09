@@ -9,7 +9,7 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets Charts Sql)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Charts Sql Network)
 
 set(PROJECT_SOURCES
         main.cpp
@@ -17,6 +17,7 @@ set(PROJECT_SOURCES
         
         # Core files
         src/core/DatabaseManager.cpp
+        src/core/AIApiClient.cpp
         
         # Common view components  
         src/views/common/UIStyleManager.cpp
@@ -25,11 +26,13 @@ set(PROJECT_SOURCES
         
         # Patient view components
         src/views/patient/ChatWidget.cpp
+        src/views/patient/RealChatWidget.cpp
         src/views/patient/FAQWidget.cpp
         src/views/patient/AppointmentWidget.cpp
         src/views/patient/PatientMainWidget.cpp
         
         # Staff view components
+        src/views/staff/StaffChatManager.cpp
         src/views/staff/StatsWidget.cpp
         src/views/staff/StaffMainWidget.cpp
         src/views/staff/ConsultationWidget.cpp
@@ -48,7 +51,7 @@ qt_add_executable(HospAI
     ${PROJECT_SOURCES}
 )
 
-target_link_libraries(HospAI PRIVATE Qt6::Core Qt6::Widgets Qt6::Charts Qt6::Sql)
+target_link_libraries(HospAI PRIVATE Qt6::Core Qt6::Widgets Qt6::Charts Qt6::Sql Qt6::Network)
 
 set_target_properties(HospAI PROPERTIES
     MACOSX_BUNDLE TRUE

@@ -10,6 +10,7 @@
 #include <QUuid>
 #include <QRandomGenerator>
 #include <QRegularExpression>
+#include <QDebug>
 
 ChatWidget::ChatWidget(QWidget *parent)
     : QWidget(parent)
@@ -38,6 +39,8 @@ ChatWidget::ChatWidget(QWidget *parent)
     , m_isAITyping(false)
     , m_isInitialized(false)
     , m_messageCount(0)
+    , m_dbManager(nullptr)
+    , m_aiApiClient(new AIApiClient(this))
 {
     initDatabase();
     setupUI();
@@ -46,10 +49,26 @@ ChatWidget::ChatWidget(QWidget *parent)
     m_currentSessionId = generateSessionId();
     m_isInitialized = true;
     
+    // 连接AI API客户端信号
+    connect(m_aiApiClient, &AIApiClient::triageResponseReceived,
+            this, &ChatWidget::onAITriageResponse);
+    connect(m_aiApiClient, &AIApiClient::apiError,
+            this, &ChatWidget::onAIApiError);
+    connect(m_aiApiClient, &AIApiClient::requestStarted, [this]() {
+        m_isAITyping = true;
+        m_statusLabel->setText("智能分诊助手正在分析中...");
+        m_btnSend->setEnabled(false);
+    });
+    connect(m_aiApiClient, &AIApiClient::requestFinished, [this]() {
+        m_isAITyping = false;
+        m_statusLabel->setText("智能分诊助手");
+        m_btnSend->setEnabled(true);
+    });
+    
     // 发送欢迎消息
     QTimer::singleShot(500, [this]() {
-        ChatMessage welcomeMsg;
-        welcomeMsg.content = "您好！我是医院智能分诊助手🏥\n\n我可以帮助您：\n• 🔍 分析症状，推荐合适科室\n• 📅 协助预约挂号流程\n• ❓ 解答就医相关问题\n• 🚨 识别紧急情况\n\n请描述您的症状或点击下方快捷按钮开始咨询～";
+        AIMessage welcomeMsg;
+        welcomeMsg.content = "您好！我是医院智能分诊助手🏥\n\n我可以帮助您：\n• 🔍 分析症状，推荐合适科室\n• 📅 协助预约挂号流程\n• ❓ 解答就医相关问题\n• 🚨 识别紧急情况\n• 👤 转接人工客服\n\n请描述您的症状或点击下方快捷按钮开始咨询～";
         welcomeMsg.type = MessageType::Robot;
         welcomeMsg.timestamp = QDateTime::currentDateTime();
         welcomeMsg.sessionId = m_currentSessionId;
@@ -63,6 +82,18 @@ ChatWidget::~ChatWidget()
         saveChatHistory();
         m_database.close();
     }
+}
+
+void ChatWidget::setDatabaseManager(DatabaseManager* dbManager)
+{
+    m_dbManager = dbManager;
+}
+
+void ChatWidget::setUserInfo(const QString& userId, const QString& userName)
+{
+    m_userId = userId;
+    m_userName = userName;
+    qDebug() << "ChatWidget 设置用户信息 - ID:" << userId << "名称:" << userName;
 }
 
 void ChatWidget::setupUI()
@@ -205,8 +236,8 @@ void ChatWidget::setupQuickButtonsArea()
     m_quickButtonsLayout = new QGridLayout(m_quickButtonsGroup);
     m_quickButtonsLayout->setSpacing(8);
     m_quickButtonGroup = new QButtonGroup(this);
-    connect(m_quickButtonGroup, QOverload<QAbstractButton*>::of(&QButtonGroup::buttonClicked),
-            this, &ChatWidget::onQuickButtonClicked);
+    connect(m_quickButtonGroup, SIGNAL(buttonClicked(QAbstractButton*)),
+            this, SLOT(onQuickButtonClicked(QAbstractButton*)));
     
     m_mainLayout->addWidget(m_quickButtonsGroup);
     
@@ -292,9 +323,6 @@ void ChatWidget::setupInputArea()
     connect(m_messageInput, &QTextEdit::textChanged, this, &ChatWidget::onInputTextChanged);
     connect(m_btnSend, &QPushButton::clicked, this, &ChatWidget::onSendMessage);
     
-    // 支持回车发送
-    m_messageInput->installEventFilter(this);
-    
     m_inputLayout->addWidget(m_messageInput);
     m_inputLayout->addWidget(m_btnVoice);
     m_inputLayout->addWidget(m_btnEmoji);
@@ -331,7 +359,7 @@ void ChatWidget::setupQuickButtons()
     QStringList quickQuestions = {
         "🤒 发热咨询", "😷 感冒症状", "🤕 头痛头晕",
         "🤧 咳嗽咳痰", "😣 腹痛腹泻", "🔴 皮肤问题",
-        "👁️ 视力问题", "👂 听力问题", "🦷 口腔问题"
+        "👁️ 视力问题", "👂 听力问题", "👤 转人工客服"
     };
     
     int row = 0, col = 0;
@@ -377,7 +405,239 @@ void ChatWidget::addQuickButton(const QString& text, const QString& responseTemp
     m_quickButtonsLayout->addWidget(button, row, col);
 }
 
-void ChatWidget::addMessage(const ChatMessage& message)
+void ChatWidget::onQuickButtonClicked(QAbstractButton* button)
+{
+    QPushButton* pushButton = qobject_cast<QPushButton*>(button);
+    if (pushButton) {
+        QString buttonText = pushButton->text();
+        qDebug() << "快捷按钮被点击:" << buttonText;
+        
+        // 检查是否是转人工服务按钮
+        if (buttonText.contains("转人工客服")) {
+            qDebug() << "检测到转人工客服按钮点击！";
+            onTransferToHuman();
+            return;
+        }
+        
+        // 移除emoji，提取关键词
+        QString cleanText = buttonText.remove(QRegularExpression("[🤒😷🤕🤧😣🔴👁️👂🦷]")).trimmed();
+        
+        m_messageInput->setPlainText("我想咨询" + cleanText + "的问题");
+        onSendMessage();
+    }
+}
+
+void ChatWidget::onTransferToHuman()
+{
+    // 调试信息
+    qDebug() << "转人工按钮被点击！用户ID:" << m_userId << "用户名:" << m_userName;
+    
+    // 添加转人工提示消息
+    AIMessage systemMsg;
+    systemMsg.content = "正在为您转接人工客服，请稍候...";
+    systemMsg.type = MessageType::System;
+    systemMsg.timestamp = QDateTime::currentDateTime();
+    systemMsg.sessionId = m_currentSessionId;
+    addMessage(systemMsg);
+    
+    // 发出转人工信号，包含当前对话上下文
+    QString context = "";
+    for (const AIMessage& msg : m_chatHistory) {
+        if (msg.type == MessageType::User) {
+            context += "患者：" + msg.content + "\n";
+        } else if (msg.type == MessageType::Robot) {
+            context += "AI助手：" + msg.content + "\n";
+        }
+    }
+    
+    qDebug() << "发射转人工信号，上下文长度:" << context.length();
+    emit requestHumanService(m_userId, m_userName, context);
+    
+    // 添加转人工说明
+    addTransferOption();
+}
+
+void ChatWidget::addTransferOption()
+{
+    clearInteractionComponents();
+    
+    QWidget* transferWidget = new QWidget;
+    QVBoxLayout* transferLayout = new QVBoxLayout(transferWidget);
+    transferLayout->setSpacing(10);
+    
+    QLabel* infoLabel = new QLabel("已为您转接人工客服服务：");
+    infoLabel->setStyleSheet(R"(
+        QLabel {
+            font-size: 14px;
+            color: #1D1D1F;
+            font-weight: bold;
+            padding: 5px;
+        }
+    )");
+    
+    QLabel* detailLabel = new QLabel("• 请切换到\"客服咨询\"选项卡继续对话\n• 您的对话记录已同步给客服\n• 如需重新使用AI分诊，请点击下方按钮");
+    detailLabel->setStyleSheet(R"(
+        QLabel {
+            font-size: 13px;
+            color: #666666;
+            padding: 5px 10px;
+            line-height: 1.4;
+        }
+    )");
+    
+    QPushButton* backToAIButton = new QPushButton("🤖 返回AI分诊");
+    backToAIButton->setStyleSheet(R"(
+        QPushButton {
+            background-color: #34C759;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        QPushButton:hover {
+            background-color: #30A855;
+        }
+    )");
+    
+    connect(backToAIButton, &QPushButton::clicked, [this]() {
+        clearInteractionComponents();
+        AIMessage backMsg;
+        backMsg.content = "欢迎回到AI智能分诊！有什么可以帮助您的吗？";
+        backMsg.type = MessageType::Robot;
+        backMsg.timestamp = QDateTime::currentDateTime();
+        backMsg.sessionId = m_currentSessionId;
+        addMessage(backMsg);
+    });
+    
+    transferLayout->addWidget(infoLabel);
+    transferLayout->addWidget(detailLabel);
+    transferLayout->addWidget(backToAIButton);
+    transferLayout->addStretch();
+    
+    m_interactionLayout->addWidget(transferWidget);
+    m_interactionWidget->show();
+}
+
+void ChatWidget::onSendMessage()
+{
+    QString text = m_messageInput->toPlainText().trimmed();
+    if (text.isEmpty() || m_isAITyping) {
+        return;
+    }
+    
+    // 创建用户消息
+    AIMessage userMsg;
+    userMsg.content = text;
+    userMsg.type = MessageType::User;
+    userMsg.timestamp = QDateTime::currentDateTime();
+    userMsg.sessionId = m_currentSessionId;
+    
+    addMessage(userMsg);
+    m_messageInput->clear();
+    m_currentContext = text;
+    
+    // 检查是否直接触发转人工关键词
+    QString lowerText = text.toLower();
+    if (lowerText.contains("转人工") || lowerText.contains("换人工") || lowerText.contains("要人工") || 
+        lowerText.contains("人工客服") || lowerText.contains("真人客服") || lowerText.contains("联系客服")) {
+        QTimer::singleShot(500, this, &ChatWidget::onTransferToHuman);
+        return;
+    }
+    
+    // 构建对话历史
+    QString conversationHistory;
+    int recentMsgCount = qMin(5, m_chatHistory.size()); // 只取最近5条消息作为上下文
+    for (int i = m_chatHistory.size() - recentMsgCount; i < m_chatHistory.size(); i++) {
+        const AIMessage& msg = m_chatHistory[i];
+        if (msg.type == MessageType::User) {
+            conversationHistory += "患者：" + msg.content + "\n";
+        } else if (msg.type == MessageType::Robot) {
+            conversationHistory += "AI助手：" + msg.content + "\n";
+        }
+    }
+    
+    // 使用真实的AI API进行分诊
+    m_aiApiClient->sendTriageRequest(text, conversationHistory);
+}
+
+void ChatWidget::onAIResponseReady()
+{
+    m_isAITyping = false;
+    m_statusLabel->setText("智能分诊助手");
+    m_btnSend->setEnabled(true);
+    
+    if (!m_pendingResponse.isEmpty()) {
+        AIMessage aiMsg;
+        aiMsg.content = m_pendingResponse;
+        aiMsg.type = MessageType::Robot;
+        aiMsg.timestamp = QDateTime::currentDateTime();
+        aiMsg.sessionId = m_currentSessionId;
+        
+        addMessage(aiMsg);
+        m_pendingResponse.clear();
+        
+        // 分析是否需要添加交互组件
+        TriageAdvice advice = analyzeSymptoms(m_currentContext);
+        if (!advice.department.isEmpty()) {
+            processTriageAdvice(advice);
+        }
+    }
+}
+
+QString ChatWidget::generateAIResponse(const QString& userInput)
+{
+    // AI分诊逻辑
+    QString input = userInput.toLower();
+    
+    // 检查紧急情况
+    QStringList emergencyKeywords = {"胸痛", "呼吸困难", "昏迷", "大出血", "中毒", "外伤"};
+    for (const QString& keyword : emergencyKeywords) {
+        if (input.contains(keyword)) {
+            return "⚠️ 根据您描述的症状，建议您立即前往急诊科就诊！\n\n这种情况可能比较紧急，请不要延误。\n\n急诊科位置：医院1楼\n急诊电话：120";
+        }
+    }
+    
+    // 发热相关
+    if (input.contains("发烧") || input.contains("发热") || input.contains("体温")) {
+        return "根据您的发热症状，我需要了解更多信息：\n\n• 体温多少度？\n• 持续多长时间了？\n• 是否伴随其他症状？\n\n一般情况下：\n🌡️ 38.5°C以下：建议物理降温\n🌡️ 38.5°C以上：建议内科就诊\n🚨 持续高热：建议急诊科\n\n如需更详细的诊断，建议点击下方转人工客服。";
+    }
+    
+    // 头痛相关
+    if (input.contains("头疼") || input.contains("头痛") || input.contains("头晕")) {
+        return "关于头痛症状，我来帮您分析：\n\n请问：\n• 疼痛程度如何？\n• 是否伴随恶心呕吐？\n• 最近有没有外伤？\n\n建议科室：\n🧠 神经内科：偏头痛、神经性头痛\n👁️ 眼科：视力相关头痛\n🏥 内科：感冒引起的头痛\n\n如需专业医生诊断，可转接人工客服。";
+    }
+    
+    // 咳嗽相关
+    if (input.contains("咳嗽") || input.contains("咳痰")) {
+        return "咳嗽症状分析：\n\n请描述：\n• 干咳还是有痰？\n• 持续时间？\n• 是否伴随发热？\n\n推荐科室：\n🫁 呼吸内科：持续咳嗽、咳痰\n👶 儿科：小儿咳嗽\n🏥 内科：一般性咳嗽\n\n需要详细诊断建议转人工客服。";
+    }
+    
+    // 转人工相关 - 直接触发转人工
+    if (input.contains("转人工") || input.contains("换人工") || input.contains("要人工") || 
+        input.contains("人工客服") || input.contains("真人客服") || input.contains("联系客服")) {
+        // 直接触发转人工
+        QTimer::singleShot(500, this, &ChatWidget::onTransferToHuman);
+        return "好的，正在为您转接人工客服，请稍候...";
+    }
+    
+    // 一般人工咨询提示
+    if (input.contains("人工") || input.contains("客服") || input.contains("医生")) {
+        return "我可以为您转接人工客服：\n\n🏥 人工客服可以提供：\n• 专业医疗咨询\n• 详细症状分析\n• 预约挂号协助\n• 医院相关服务\n\n💬 输入\"转人工\"可直接转接\n📱 或点击下方\"转人工客服\"按钮";
+    }
+    
+    // 预约相关
+    if (input.contains("预约") || input.contains("挂号")) {
+        return "关于预约挂号：\n\n📱 预约方式：\n• 微信公众号预约\n• 手机APP预约\n• 现场挂号\n• 电话预约：400-123-4567\n\n⏰ 预约时间：\n• 普通门诊：提前3天\n• 专家门诊：提前7天\n\n需要预约协助？建议转接人工客服。";
+    }
+    
+    // 默认响应
+    return "我理解您的症状描述。为了给您更准确的建议，请提供更多详细信息：\n\n• 症状持续时间\n• 疼痛或不适程度\n• 是否伴随其他症状\n• 您的年龄范围\n\n如需专业医生诊断，建议转人工客服获得更详细的医疗建议。";
+}
+
+// 实现其他必要的方法
+void ChatWidget::addMessage(const AIMessage& message)
 {
     m_chatHistory.append(message);
     displayMessage(message);
@@ -389,7 +649,7 @@ void ChatWidget::addMessage(const ChatMessage& message)
     }
 }
 
-void ChatWidget::displayMessage(const ChatMessage& message)
+void ChatWidget::displayMessage(const AIMessage& message)
 {
     QWidget* messageWidget = new QWidget;
     QHBoxLayout* messageLayout = new QHBoxLayout(messageWidget);
@@ -421,7 +681,6 @@ void ChatWidget::displayMessage(const ChatMessage& message)
             }
         )";
         messageLayout->addStretch();
-        messageLayout->addWidget(bubbleLabel);
         
         QVBoxLayout* rightLayout = new QVBoxLayout;
         rightLayout->addWidget(bubbleLabel);
@@ -483,108 +742,6 @@ void ChatWidget::scrollToBottom()
     scrollBar->setValue(scrollBar->maximum());
 }
 
-void ChatWidget::onSendMessage()
-{
-    QString text = m_messageInput->toPlainText().trimmed();
-    if (text.isEmpty() || m_isAITyping) {
-        return;
-    }
-    
-    // 创建用户消息
-    ChatMessage userMsg;
-    userMsg.content = text;
-    userMsg.type = MessageType::User;
-    userMsg.timestamp = QDateTime::currentDateTime();
-    userMsg.sessionId = m_currentSessionId;
-    
-    addMessage(userMsg);
-    m_messageInput->clear();
-    
-    // 显示AI正在输入
-    m_isAITyping = true;
-    m_statusLabel->setText("智能分诊助手正在分析...");
-    m_btnSend->setEnabled(false);
-    
-    // 生成AI响应
-    m_pendingResponse = generateAIResponse(text);
-    m_currentContext = text;
-    
-    // 模拟AI思考时间
-    int delay = QRandomGenerator::global()->bounded(1000, 3000);
-    m_responseTimer->start(delay);
-}
-
-void ChatWidget::onAIResponseReady()
-{
-    m_isAITyping = false;
-    m_statusLabel->setText("智能分诊助手");
-    m_btnSend->setEnabled(true);
-    
-    if (!m_pendingResponse.isEmpty()) {
-        ChatMessage aiMsg;
-        aiMsg.content = m_pendingResponse;
-        aiMsg.type = MessageType::Robot;
-        aiMsg.timestamp = QDateTime::currentDateTime();
-        aiMsg.sessionId = m_currentSessionId;
-        
-        addMessage(aiMsg);
-        m_pendingResponse.clear();
-        
-        // 分析是否需要添加交互组件
-        TriageAdvice advice = analyzeSymptoms(m_currentContext);
-        if (!advice.department.isEmpty()) {
-            processTriageAdvice(advice);
-        }
-    }
-}
-
-QString ChatWidget::generateAIResponse(const QString& userInput)
-{
-    // 简单的关键词匹配响应逻辑
-    QString input = userInput.toLower();
-    
-    // 检查紧急情况
-    QStringList emergencyKeywords = {"胸痛", "呼吸困难", "昏迷", "大出血", "中毒", "外伤"};
-    for (const QString& keyword : emergencyKeywords) {
-        if (input.contains(keyword)) {
-            return "⚠️ 根据您描述的症状，建议您立即前往急诊科就诊！\n\n这种情况可能比较紧急，请不要延误。\n\n急诊科位置：医院1楼\n急诊电话：120";
-        }
-    }
-    
-    // 发热相关
-    if (input.contains("发烧") || input.contains("发热") || input.contains("体温")) {
-        return "根据您的发热症状，我需要了解更多信息：\n\n• 体温多少度？\n• 持续多长时间了？\n• 是否伴随其他症状？\n\n一般情况下：\n🌡️ 38.5°C以下：建议物理降温\n🌡️ 38.5°C以上：建议内科就诊\n🚨 持续高热：建议急诊科";
-    }
-    
-    // 头痛相关
-    if (input.contains("头疼") || input.contains("头痛") || input.contains("头晕")) {
-        return "关于头痛症状，我来帮您分析：\n\n请问：\n• 疼痛程度如何？\n• 是否伴随恶心呕吐？\n• 最近有没有外伤？\n\n建议科室：\n🧠 神经内科：偏头痛、神经性头痛\n👁️ 眼科：视力相关头痛\n🏥 内科：感冒引起的头痛";
-    }
-    
-    // 咳嗽相关
-    if (input.contains("咳嗽") || input.contains("咳痰")) {
-        return "咳嗽症状分析：\n\n请描述：\n• 干咳还是有痰？\n• 持续时间？\n• 是否伴随发热？\n\n推荐科室：\n🫁 呼吸内科：持续咳嗽、咳痰\n👶 儿科：小儿咳嗽\n🏥 内科：一般性咳嗽";
-    }
-    
-    // 腹痛相关
-    if (input.contains("肚子疼") || input.contains("腹痛") || input.contains("胃痛")) {
-        return "腹痛需要进一步确认：\n\n请告诉我：\n• 哪个部位疼痛？\n• 疼痛性质（刺痛/胀痛）？\n• 是否恶心呕吐？\n\n可能科室：\n🏥 消化内科：胃肠道问题\n🏥 普外科：急性腹痛\n👩‍⚕️ 妇科：女性下腹痛";
-    }
-    
-    // 皮肤问题
-    if (input.contains("皮疹") || input.contains("瘙痒") || input.contains("过敏")) {
-        return "皮肤问题咨询：\n\n请描述：\n• 皮疹的形状和颜色？\n• 瘙痒程度？\n• 最近有无新接触物？\n\n推荐：\n🩺 皮肤科：各种皮肤问题\n⚡ 急诊科：严重过敏反应";
-    }
-    
-    // 预约相关
-    if (input.contains("预约") || input.contains("挂号")) {
-        return "关于预约挂号：\n\n📱 预约方式：\n• 微信公众号预约\n• 手机APP预约\n• 现场挂号\n• 电话预约：400-123-4567\n\n⏰ 预约时间：\n• 普通门诊：提前3天\n• 专家门诊：提前7天\n\n需要我帮您选择合适的科室吗？";
-    }
-    
-    // 默认响应
-    return "我理解您的症状描述。为了给您更准确的建议，请提供更多详细信息：\n\n• 症状持续时间\n• 疼痛或不适程度\n• 是否伴随其他症状\n• 您的年龄范围\n\n这些信息将帮助我为您推荐最合适的科室。";
-}
-
 TriageAdvice ChatWidget::analyzeSymptoms(const QString& userInput)
 {
     TriageAdvice advice;
@@ -615,10 +772,10 @@ void ChatWidget::processTriageAdvice(const TriageAdvice& advice)
 {
     if (advice.needEmergency) {
         // 紧急情况，添加紧急就诊按钮
-        addActionButtons({"🚨 立即急诊", "📞 拨打120"});
+        addActionButtons({"🚨 立即急诊", "📞 拨打120", "👤 转人工客服"});
     } else if (advice.needAppointment) {
         // 需要预约，添加预约按钮
-        addActionButtons({"📅 预约" + advice.department, "🔍 查看更多科室"});
+        addActionButtons({"📅 预约" + advice.department, "🔍 查看更多科室", "👤 转人工客服"});
     }
 }
 
@@ -632,21 +789,43 @@ void ChatWidget::addActionButtons(const QStringList& actions)
     
     for (const QString& action : actions) {
         QPushButton* btn = new QPushButton(action);
-        btn->setStyleSheet(R"(
-            QPushButton {
-                background-color: #34C759;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                padding: 10px 20px;
-                font-size: 14px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #30A855;
-            }
-        )");
-        connect(btn, &QPushButton::clicked, this, &ChatWidget::onActionButtonClicked);
+        QString buttonStyle;
+        
+        if (action.contains("转人工客服")) {
+            buttonStyle = R"(
+                QPushButton {
+                    background-color: #FF9500;
+                    color: white;
+                    border: none;
+                    border-radius: 8px;
+                    padding: 10px 20px;
+                    font-size: 14px;
+                    font-weight: bold;
+                }
+                QPushButton:hover {
+                    background-color: #E6860E;
+                }
+            )";
+            connect(btn, &QPushButton::clicked, this, &ChatWidget::onTransferToHuman);
+        } else {
+            buttonStyle = R"(
+                QPushButton {
+                    background-color: #34C759;
+                    color: white;
+                    border: none;
+                    border-radius: 8px;
+                    padding: 10px 20px;
+                    font-size: 14px;
+                    font-weight: bold;
+                }
+                QPushButton:hover {
+                    background-color: #30A855;
+                }
+            )";
+            connect(btn, &QPushButton::clicked, this, &ChatWidget::onActionButtonClicked);
+        }
+        
+        btn->setStyleSheet(buttonStyle);
         actionLayout->addWidget(btn);
     }
     
@@ -668,19 +847,6 @@ void ChatWidget::clearInteractionComponents()
 }
 
 // 其他槽函数的简单实现
-void ChatWidget::onQuickButtonClicked()
-{
-    QPushButton* button = qobject_cast<QPushButton*>(sender());
-    if (button) {
-        QString buttonText = button->text();
-        // 移除emoji，提取关键词
-        QString cleanText = buttonText.remove(QRegularExpression("[🤒😷🤕🤧😣🔴👁️👂🦷]")).trimmed();
-        
-        m_messageInput->setPlainText("我想咨询" + cleanText + "的问题");
-        onSendMessage();
-    }
-}
-
 void ChatWidget::onInputTextChanged()
 {
     bool hasText = !m_messageInput->toPlainText().trimmed().isEmpty();
@@ -693,8 +859,8 @@ void ChatWidget::onActionButtonClicked()
     if (button) {
         QString action = button->text();
         
-        ChatMessage actionMsg;
-        actionMsg.content = "您点击了：" + action + "\n\n相关功能正在开发中，敬请期待！";
+        AIMessage actionMsg;
+        actionMsg.content = "您选择了：" + action + "\n\n相关功能正在开发中。如需立即协助，建议转人工客服。";
         actionMsg.type = MessageType::System;
         actionMsg.timestamp = QDateTime::currentDateTime();
         actionMsg.sessionId = m_currentSessionId;
@@ -723,7 +889,7 @@ void ChatWidget::onClearChatClicked()
         
         // 重新发送欢迎消息
         QTimer::singleShot(300, [this]() {
-            ChatMessage welcomeMsg;
+            AIMessage welcomeMsg;
             welcomeMsg.content = "聊天记录已清空。我是医院智能分诊助手，请问有什么可以帮助您的吗？";
             welcomeMsg.type = MessageType::Robot;
             welcomeMsg.timestamp = QDateTime::currentDateTime();
@@ -735,15 +901,7 @@ void ChatWidget::onClearChatClicked()
 
 void ChatWidget::onSaveChatClicked()
 {
-    QString fileName = QFileDialog::getSaveFileName(this, 
-        "保存聊天记录", 
-        "聊天记录_" + QDateTime::currentDateTime().toString("yyyyMMdd_hhmmss") + ".txt",
-        "文本文件 (*.txt)");
-    
-    if (!fileName.isEmpty()) {
-        saveChatHistory();
-        QMessageBox::information(this, "保存成功", "聊天记录已保存到本地数据库，并可导出为文本文件。");
-    }
+    QMessageBox::information(this, "保存成功", "聊天记录已保存。");
 }
 
 void ChatWidget::onSettingsClicked()
@@ -757,12 +915,12 @@ void ChatWidget::initDatabase()
     QString dbPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     QDir().mkpath(dbPath);
     
-    m_database = QSqlDatabase::addDatabase("QSQLITE", "chat_db");
-    m_database.setDatabaseName(dbPath + "/chat_history.db");
+    m_database = QSqlDatabase::addDatabase("QSQLITE", "ai_chat_db");
+    m_database.setDatabaseName(dbPath + "/ai_chat_history.db");
     
     if (m_database.open()) {
         QSqlQuery query(m_database);
-        query.exec("CREATE TABLE IF NOT EXISTS chat_messages ("
+        query.exec("CREATE TABLE IF NOT EXISTS ai_chat_messages ("
                   "id INTEGER PRIMARY KEY AUTOINCREMENT,"
                   "session_id TEXT,"
                   "content TEXT,"
@@ -776,10 +934,10 @@ void ChatWidget::saveChatHistory()
     if (!m_database.isOpen()) return;
     
     QSqlQuery query(m_database);
-    query.prepare("INSERT INTO chat_messages (session_id, content, message_type, timestamp) "
+    query.prepare("INSERT INTO ai_chat_messages (session_id, content, message_type, timestamp) "
                  "VALUES (?, ?, ?, ?)");
     
-    for (const ChatMessage& msg : m_chatHistory) {
+    for (const AIMessage& msg : m_chatHistory) {
         query.bindValue(0, msg.sessionId);
         query.bindValue(1, msg.content);
         query.bindValue(2, static_cast<int>(msg.type));
@@ -805,4 +963,55 @@ void ChatWidget::loadChatHistory() { }
 QString ChatWidget::extractKeywords(const QString& text) { return text; }
 QStringList ChatWidget::getSymptomKeywords(const QString& text) { return QStringList(); }
 void ChatWidget::updateQuickButtons(const QStringList& suggestions) { }
-void ChatWidget::addDepartmentSelector(const QStringList& departments) { } 
+void ChatWidget::addDepartmentSelector(const QStringList& departments) { }
+
+void ChatWidget::onAITriageResponse(const AIDiagnosisResult& result)
+{
+    // 创建AI回复消息
+    AIMessage aiMsg;
+    aiMsg.content = result.aiResponse;
+    aiMsg.type = MessageType::Robot;
+    aiMsg.timestamp = QDateTime::currentDateTime();
+    aiMsg.sessionId = m_currentSessionId;
+    
+    addMessage(aiMsg);
+    
+    // 根据诊断结果添加交互组件
+    QStringList actionButtons;
+    
+    if (result.emergencyLevel == "critical") {
+        actionButtons << "🚨 立即急诊" << "📞 拨打120" << "👤 转人工客服";
+    } else if (result.emergencyLevel == "high") {
+        actionButtons << "🏥 尽快就医" << "📞 预约挂号" << "👤 转人工客服";
+    } else if (!result.recommendedDepartment.isEmpty()) {
+        actionButtons << QString("📅 预约%1").arg(result.recommendedDepartment) 
+                      << "🔍 查看更多科室" << "👤 转人工客服";
+    } else {
+        actionButtons << "🔍 症状分析" << "📅 预约挂号" << "👤 转人工客服";
+    }
+    
+    if (!actionButtons.isEmpty()) {
+        addActionButtons(actionButtons);
+    }
+    
+    qDebug() << "AI分诊结果 - 科室:" << result.recommendedDepartment 
+             << "紧急程度:" << result.emergencyLevel
+             << "需要人工:" << result.needsHumanConsult;
+}
+
+void ChatWidget::onAIApiError(const QString& error)
+{
+    qDebug() << "AI API错误:" << error;
+    
+    // 显示错误消息并回退到本地逻辑
+    AIMessage errorMsg;
+    errorMsg.content = "抱歉，AI服务暂时不可用，为您提供基础分诊建议：\n\n" + generateAIResponse(m_currentContext);
+    errorMsg.type = MessageType::Robot;
+    errorMsg.timestamp = QDateTime::currentDateTime();
+    errorMsg.sessionId = m_currentSessionId;
+    
+    addMessage(errorMsg);
+    
+    // 添加基础交互按钮
+    addActionButtons({"🔍 症状自查", "📅 预约挂号", "👤 转人工客服"});
+} 

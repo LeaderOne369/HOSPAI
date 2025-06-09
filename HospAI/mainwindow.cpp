@@ -17,6 +17,7 @@
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
+    , m_dbManager(nullptr)
 {
     setupUI();
     setupMenus();
@@ -126,8 +127,45 @@ void MainWindow::setCurrentUser(const UserInfo& user)
                    .arg(user.realName.isEmpty() ? user.username : user.realName)
                    .arg(user.role));
     
+    // 传递用户信息给各个界面组件
+    AdminMainWidget* adminWidget = qobject_cast<AdminMainWidget*>(m_centralStack->widget(0));
+    if (adminWidget) {
+        adminWidget->setCurrentUser(user);
+    }
+    
+    StaffMainWidget* staffWidget = qobject_cast<StaffMainWidget*>(m_centralStack->widget(1));
+    if (staffWidget) {
+        staffWidget->setCurrentUser(user);
+    }
+    
+    PatientMainWidget* patientWidget = qobject_cast<PatientMainWidget*>(m_centralStack->widget(2));
+    if (patientWidget) {
+        patientWidget->setCurrentUser(user);
+        if (m_dbManager) {
+            patientWidget->setDatabaseManager(m_dbManager);
+        }
+    }
+    
     // 根据角色更新UI
     updateUIForRole();
+}
+
+void MainWindow::setDatabaseManager(DatabaseManager* dbManager)
+{
+    m_dbManager = dbManager;
+    
+    // 如果已经设置了用户和数据库管理器，传递给患者界面
+    if (m_dbManager && !m_currentUser.username.isEmpty()) {
+        PatientMainWidget* patientWidget = qobject_cast<PatientMainWidget*>(m_centralStack->widget(2));
+        if (patientWidget) {
+            patientWidget->setDatabaseManager(m_dbManager);
+        }
+        
+        StaffMainWidget* staffWidget = qobject_cast<StaffMainWidget*>(m_centralStack->widget(1));
+        if (staffWidget) {
+            staffWidget->setDatabaseManager(m_dbManager);
+        }
+    }
 }
 
 void MainWindow::updateUIForRole()

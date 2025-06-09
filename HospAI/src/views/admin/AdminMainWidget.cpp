@@ -6,6 +6,12 @@ AdminMainWidget::AdminMainWidget(QWidget *parent)
     setupUI();
 }
 
+void AdminMainWidget::setCurrentUser(const UserInfo& user)
+{
+    m_currentUser = user;
+    // 管理员界面可以在这里根据需要更新组件状态
+}
+
 void AdminMainWidget::setupUI()
 {
     m_mainLayout = new QVBoxLayout(this);

@@ -13,6 +13,7 @@
 #include <QTextEdit>
 #include <QScrollArea>
 #include <QApplication>
+#include <QScreen>
 
 class UIStyleManager : public QObject
 {
@@ -25,20 +26,25 @@ public:
     // 应用全局样式表
     static void applyGlobalStyleSheet(QApplication *app);
     
-    // 基础颜色方案
+    // 跨平台DPI优化
+    static void optimizeForHighDPI(QApplication *app);
+    
+    // 跨平台统一颜色方案
     struct ColorScheme {
-        QString primary = "#3498db";        // 主色调 - 柔和蓝色
-        QString primaryDark = "#2980b9";    // 深蓝色
-        QString secondary = "#95a5a6";      // 次要色 - 灰色
-        QString background = "#ecf0f1";     // 背景色 - 浅灰
-        QString surface = "#ffffff";       // 表面色 - 白色
-        QString text = "#2c3e50";          // 文字色 - 深灰蓝
-        QString textSecondary = "#7f8c8d";  // 次要文字色
-        QString success = "#27ae60";       // 成功色 - 绿色
-        QString warning = "#f39c12";       // 警告色 - 橙色
-        QString error = "#e74c3c";         // 错误色 - 红色
-        QString border = "#bdc3c7";        // 边框色
+        QString primary = "#007ACC";        // 主色调 - 现代蓝色
+        QString primaryDark = "#005A9E";    // 深蓝色
+        QString secondary = "#6C757D";      // 次要色 - 中性灰
+        QString background = "#F8F9FA";     // 背景色 - 极浅灰
+        QString surface = "#FFFFFF";       // 表面色 - 纯白
+        QString text = "#212529";          // 文字色 - 深灰
+        QString textSecondary = "#6C757D";  // 次要文字色 - 中灰
+        QString success = "#28A745";       // 成功色 - 绿色
+        QString warning = "#FFC107";       // 警告色 - 黄色
+        QString error = "#DC3545";         // 错误色 - 红色
+        QString border = "#DEE2E6";        // 边框色 - 浅灰
         QString shadow = "rgba(0, 0, 0, 0.1)"; // 阴影色
+        QString hover = "#F8F9FA";         // 悬停背景 - 浅灰
+        QString accent = "#17A2B8";        // 强调色 - 青色
     };
 
     static ColorScheme colors;

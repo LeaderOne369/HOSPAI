@@ -9,6 +9,7 @@
 #include "SystemStatsWidget.h"
 #include "SystemConfigWidget.h"
 #include "AuditLogWidget.h"
+#include "../../core/DatabaseManager.h"
 
 class AdminMainWidget : public QWidget
 {
@@ -16,6 +17,8 @@ class AdminMainWidget : public QWidget
 
 public:
     explicit AdminMainWidget(QWidget *parent = nullptr);
+    
+    void setCurrentUser(const UserInfo& user);
 
 private:
     void setupUI();
@@ -27,6 +30,8 @@ private:
     SystemStatsWidget* m_systemStatsWidget;
     SystemConfigWidget* m_systemConfigWidget;
     AuditLogWidget* m_auditLogWidget;
+    
+    UserInfo m_currentUser;
 };
 
 #endif // ADMINMAINWIDGET_H 

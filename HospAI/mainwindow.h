@@ -23,6 +23,7 @@ public:
     
     void setCurrentUser(const UserInfo& user);
     UserInfo getCurrentUser() const { return m_currentUser; }
+    void setDatabaseManager(DatabaseManager* dbManager);
 
 private slots:
     void showAdminPanel();
@@ -58,6 +59,7 @@ private:
     
     // 数据
     UserInfo m_currentUser;
+    DatabaseManager* m_dbManager;
 };
 
 #endif // MAINWINDOW_H
