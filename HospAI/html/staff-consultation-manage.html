@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HospAI - 客服咨询管理</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background-color: #f4f6f9;
+        }
+        .header {
+            background-color: #fff;
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .header .menu {
+            display: flex;
+            gap: 20px;
+        }
+        .header .menu button {
+            background-color: #3b82f6;
+            color: #fff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .header .menu button:hover {
+            background-color: #2563eb;
+        }
+        .chat-container {
+            display: flex;
+            padding: 20px;
+        }
+        .customer-list {
+            width: 25%;
+            background-color: #fff;
+            border-radius: 6px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin-right: 20px;
+        }
+        .customer-list h3 {
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+        .customer-list ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .customer-list ul li {
+            padding: 10px;
+            background-color: #f9fafb;
+            margin-bottom: 5px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .customer-list ul li:hover {
+            background-color: #e0e0e0;
+        }
+        .chat-box {
+            width: 70%;
+            background-color: #fff;
+            border-radius: 6px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            height: 400px;
+            justify-content: flex-end;
+        }
+        .chat-box .messages {
+            overflow-y: auto;
+            flex: 1;
+            margin-bottom: 20px;
+        }
+        .message {
+            margin-bottom: 15px;
+        }
+        .message p {
+            margin: 0;
+            padding: 8px 15px;
+            background-color: #e0e0e0;
+            border-radius: 6px;
+        }
+        .message.sent p {
+            background-color: #34D399;
+            text-align: right;
+        }
+        .message.received p {
+            background-color: #f9fafb;
+            text-align: left;
+        }
+        .input-section {
+            display: flex;
+            gap: 10px;
+        }
+        .input-section input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+        }
+        .input-section button {
+            padding: 12px 20px;
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .input-section button:hover {
+            background-color: #2563eb;
+        }
+        .footer {
+            background-color: #fff;
+            padding: 20px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+        }
+        .footer .user-info {
+            font-size: 14px;
+            color: #333;
+        }
+        .footer .version {
+            font-size: 12px;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Section -->
+    <div class="header">
+        <h1>HospAI 医院智能客服系统</h1>
+        <div class="menu">
+            <button>客服聊天</button>
+            <button>咨询管理</button>
+            <button>工作统计</button>
+            <button>知识库</button>
+        </div>
+    </div>
+
+    <!-- Chat Container Section -->
+    <div class="chat-container">
+        <!-- Customer List Section -->
+        <div class="customer-list">
+            <h3>客户列表</h3>
+            <ul>
+                <li>患者001 - 咨询挂号</li>
+                <li>患者002 - 检查报告</li>
+                <li>患者003 - 用药咨询</li>
+            </ul>
+        </div>
+
+        <!-- Chat Box Section -->
+        <div class="chat-box">
+            <div class="messages">
+                <div class="message received">
+                    <p>您好，如何帮您服务？</p>
+                </div>
+                <div class="message sent">
+                    <p>我想查询我的挂号信息。</p>
+                </div>
+            </div>
+
+            <div class="input-section">
+                <input type="text" placeholder="请输入回复信息...">
+                <button>发送</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer Section -->
+    <div class="footer">
+        <div class="user-info">当前用户: 加 | 角色: 客服</div>
+        <div class="version">HospAI v1.0.0</div>
+    </div>
+
+</body>
+</html>

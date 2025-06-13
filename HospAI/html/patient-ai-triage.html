@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HospAI - 患者智能分诊</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background-color: #F8F9FA;
+            padding: 15px;
+        }
+
+        .chat-widget {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            height: 80vh;
+            min-height: 600px;
+        }
+
+        /* 顶部工具栏 - 对应Qt的m_toolBarLayout */
+        .toolbar-layout {
+            display: flex;
+            padding: 10px 15px;
+            gap: 10px;
+            border-bottom: 1px solid #E5E5EA;
+            align-items: center;
+        }
+
+        .toolbar-button {
+            background-color: white;
+            border: 1px solid #D1D1D6;
+            border-radius: 6px;
+            padding: 8px 16px;
+            font-size: 13px;
+            color: #1D1D1F;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .toolbar-button:hover {
+            background-color: #F2F2F7;
+            border-color: #007AFF;
+        }
+
+        .toolbar-button.checked {
+            background-color: #007AFF;
+            color: white;
+        }
+
+        .status-label {
+            flex: 1;
+            text-align: center;
+            font-size: 16px;
+            font-weight: bold;
+            color: #1D1D1F;
+            padding: 8px;
+        }
+
+        /* 富文本工具栏 - 对应Qt的m_richTextToolbar */
+        .rich-text-toolbar {
+            background-color: #F2F2F7;
+            border: 1px solid #D1D1D6;
+            border-radius: 8px;
+            padding: 5px;
+            margin: 10px 15px;
+            display: none;
+            flex-wrap: wrap;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .rich-text-toolbar.visible {
+            display: flex;
+        }
+
+        .rich-button {
+            background-color: white;
+            border: 1px solid #D1D1D6;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-weight: bold;
+            min-width: 24px;
+            min-height: 24px;
+            cursor: pointer;
+        }
+
+        .rich-button:hover {
+            background-color: #E5E5EA;
+        }
+
+        .rich-button.checked {
+            background-color: #007AFF;
+            color: white;
+        }
+
+        .font-select {
+            border: 1px solid #D1D1D6;
+            border-radius: 4px;
+            padding: 2px 4px;
+            background-color: white;
+        }
+
+        /* 聊天区域 - 对应Qt的m_chatScrollArea */
+        .chat-scroll-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px 15px;
+        }
+
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            min-height: 100%;
+            justify-content: flex-end;
+        }
+
+        .message {
+            display: flex;
+            margin-bottom: 10px;
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message.robot {
+            justify-content: flex-start;
+        }
+
+        .message-bubble {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            font-size: 14px;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+
+        .message.user .message-bubble {
+            background-color: #007AFF;
+            color: white;
+        }
+
+        .message.robot .message-bubble {
+            background-color: #F2F2F7;
+            color: #1D1D1F;
+        }
+
+        .message-time {
+            font-size: 11px;
+            color: #8E8E93;
+            margin-top: 4px;
+            text-align: center;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 12px 16px;
+            background-color: #F2F2F7;
+            border-radius: 18px;
+            max-width: 100px;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #8E8E93;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% { opacity: 0.3; }
+            30% { opacity: 1; }
+        }
+
+        /* 快捷按钮区域 - 对应Qt的m_quickButtonsArea */
+        .quick-buttons-area {
+            padding: 10px 15px;
+            border-top: 1px solid #E5E5EA;
+        }
+
+        .quick-buttons-title {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .quick-buttons-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 8px;
+        }
+
+        .quick-button {
+            background-color: #F2F2F7;
+            border: 1px solid #D1D1D6;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 13px;
+            color: #1D1D1F;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: left;
+        }
+
+        .quick-button:hover {
+            background-color: #E5E5EA;
+            border-color: #007AFF;
+        }
+
+        /* 输入区域 - 对应Qt的m_inputArea */
+        .input-area {
+            border-top: 1px solid #E5E5EA;
+            padding: 15px;
+        }
+
+        .input-layout {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .message-input {
+            flex: 1;
+            border: 2px solid #E5E5EA;
+            border-radius: 20px;
+            padding: 10px 15px;
+            font-size: 14px;
+            resize: none;
+            min-height: 40px;
+            max-height: 120px;
+            line-height: 1.4;
+        }
+
+        .message-input:focus {
+            outline: none;
+            border-color: #007AFF;
+        }
+
+        .rich-message-input {
+            flex: 1;
+            border: 2px solid #E5E5EA;
+            border-radius: 12px;
+            padding: 10px 15px;
+            font-size: 14px;
+            min-height: 40px;
+            max-height: 120px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .rich-message-input.visible {
+            display: block;
+        }
+
+        .rich-message-input:focus {
+            outline: none;
+            border-color: #007AFF;
+        }
+
+        .input-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .input-button {
+            background-color: #007AFF;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .input-button:hover:not(:disabled) {
+            background-color: #0056CC;
+        }
+
+        .input-button:disabled {
+            background-color: #C7C7CC;
+            cursor: not-allowed;
+        }
+
+        .input-button.secondary {
+            background-color: #6c757d;
+        }
+
+        .input-button.secondary:hover {
+            background-color: #545b62;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-widget">
+        <!-- 顶部工具栏 - 对应Qt的m_toolBarLayout -->
+        <div class="toolbar-layout">
+            <button class="toolbar-button" onclick="clearChat()">清空对话</button>
+            <button class="toolbar-button" onclick="saveChat()">保存对话</button>
+            <div class="status-label" id="statusLabel">AI智能导诊</div>
+            <button class="toolbar-button" id="richModeToggle" onclick="toggleRichMode()">富文本模式</button>
+            <button class="toolbar-button" onclick="openSettings()">设置</button>
+        </div>
+
+        <!-- 富文本工具栏 - 对应Qt的m_richTextToolbar -->
+        <div class="rich-text-toolbar" id="richTextToolbar">
+            <span>字体:</span>
+            <select class="font-select" onchange="changeFont(this.value)">
+                <option>Microsoft YaHei</option>
+                <option>宋体</option>
+                <option>黑体</option>
+            </select>
+            <span>大小:</span>
+            <input type="number" class="font-select" value="12" min="8" max="72" style="width: 60px;" onchange="changeFontSize(this.value)">
+            <button class="rich-button" onclick="toggleBold()" title="粗体"><b>B</b></button>
+            <button class="rich-button" onclick="toggleItalic()" title="斜体"><i>I</i></button>
+            <button class="rich-button" onclick="toggleUnderline()" title="下划线"><u>U</u></button>
+            <button class="rich-button" onclick="toggleStrike()" title="删除线"><s>S</s></button>
+            <button class="rich-button" onclick="changeTextColor()" title="文字颜色">🎨</button>
+            <button class="rich-button" onclick="changeBgColor()" title="背景颜色">🖍️</button>
+            <button class="rich-button" onclick="insertImage()" title="插入图片">🖼️</button>
+            <button class="rich-button" onclick="insertFile()" title="插入文件">📎</button>
+        </div>
+
+        <!-- 聊天区域 - 对应Qt的m_chatScrollArea -->
+        <div class="chat-scroll-area" id="chatScrollArea">
+            <div class="chat-container" id="chatContainer">
+                <!-- 欢迎消息 -->
+                <div class="message robot">
+                    <div>
+                        <div class="message-bubble">
+                            👋 您好！我是AI智能导诊助手，可以帮助您：<br><br>
+                            🏥 科室推荐和医生介绍<br>
+                            📅 预约挂号服务<br>
+                            💡 健康咨询和症状分析<br>
+                            🆘 紧急情况处理指导<br><br>
+                            请描述您的症状或选择下方快捷咨询选项：
+                        </div>
+                        <div class="message-time">刚刚</div>
+                    </div>
+                </div>
+
+                <!-- 打字指示器 -->
+                <div class="message robot">
+                    <div class="typing-indicator" id="typingIndicator">
+                        <div class="typing-dots">
+                            <div class="typing-dot"></div>
+                            <div class="typing-dot"></div>
+                            <div class="typing-dot"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 快捷按钮区域 - 对应Qt的m_quickButtonsArea -->
+        <div class="quick-buttons-area">
+            <div class="quick-buttons-title">快捷咨询选项：</div>
+            <div class="quick-buttons-grid">
+                <button class="quick-button" onclick="sendQuickMessage('我想挂号，请问流程是什么？')">🏥 挂号流程咨询</button>
+                <button class="quick-button" onclick="sendQuickMessage('我头疼，应该看什么科室？')">🩺 症状科室推荐</button>
+                <button class="quick-button" onclick="sendQuickMessage('医院的营业时间是什么时候？')">⏰ 医院营业时间</button>
+                <button class="quick-button" onclick="sendQuickMessage('如何查看检查结果？')">📋 检查结果查询</button>
+                <button class="quick-button" onclick="sendQuickMessage('医保报销需要什么材料？')">💳 医保报销指导</button>
+                <button class="quick-button" onclick="sendQuickMessage('医院的位置和交通路线')">🚗 医院位置导航</button>
+                <button class="quick-button" onclick="sendQuickMessage('急诊科在哪里？现在开放吗？')">🚨 急诊科咨询</button>
+                <button class="quick-button" onclick="requestHumanService()">👨‍⚕️ 转人工客服</button>
+            </div>
+        </div>
+
+        <!-- 输入区域 - 对应Qt的m_inputArea -->
+        <div class="input-area">
+            <div class="input-layout">
+                <textarea class="message-input" id="messageInput" placeholder="请输入您的问题..." rows="1" onkeypress="handleKeyPress(event)" oninput="autoResize(this)"></textarea>
+                <div class="rich-message-input" id="richMessageInput" contenteditable="true" placeholder="请输入您的问题..."></div>
+                <div class="input-buttons">
+                    <button class="input-button secondary" onclick="insertEmoji()">😊</button>
+                    <button class="input-button" id="sendButton" onclick="sendMessage()">发送</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isRichMode = false;
+        let isAITyping = false;
+
+        // AI回复模板
+        const aiResponses = {
+            '挂号': '挂号流程如下：\n\n1. 网上预约：关注医院微信公众号或下载APP\n2. 现场挂号：到一楼挂号窗口办理\n3. 自助挂号：使用自助挂号机\n\n您可以提前1-7天预约，建议提前预约避免排队。需要更详细的帮助吗？',
+            '头疼': '头疼可能涉及多个科室，建议：\n\n🧠 神经内科：偏头痛、紧张性头痛\n👁️ 眼科：视力问题引起的头痛\n👃 耳鼻喉科：鼻窦炎引起的头痛\n🩸 内科：高血压等内科疾病\n\n如果是突然剧烈头痛，建议直接去急诊科。您的头痛有什么特殊症状吗？',
+            '营业时间': '医院营业时间：\n\n🏥 门诊时间：\n周一至周日 8:00-17:00\n\n🚨 急诊科：24小时开放\n\n💊 药房：\n周一至周日 8:00-21:00\n\n🔬 检验科：\n周一至周日 7:30-16:30',
+            '检查结果': '查看检查结果的方式：\n\n📱 手机APP：下载医院官方APP查询\n💻 官网查询：登录医院官网\n🏥 现场查询：到检验科或相关科室\n📞 电话查询：拨打查询热线\n\n一般检查结果会在1-3个工作日内出来，您可以设置结果通知提醒。',
+            '医保': '医保报销所需材料：\n\n📋 必备材料：\n• 医保卡/社保卡\n• 身份证\n• 病历本\n• 费用清单\n• 发票原件\n\n💰 报销比例：\n• 门诊：70-90%\n• 住院：85-95%\n\n具体比例请咨询医保窗口工作人员。',
+            '位置': '医院位置信息：\n\n📍 地址：市中心人民路123号\n\n🚗 自驾路线：\n导航搜索"市人民医院"即可\n\n🚌 公共交通：\n• 地铁：2号线人民医院站A出口\n• 公交：15路、23路、45路医院站\n\n🅿️ 停车：医院设有地下停车场，收费标准每小时5元',
+            '急诊': '急诊科信息：\n\n🏥 位置：医院一楼东侧\n⏰ 开放时间：24小时全天候\n🚨 适用情况：\n• 生命危险的急症\n• 严重外伤\n• 急性中毒\n• 高热不退\n\n📞 急救电话：120\n如有生命危险请立即拨打120！'
+        };
+
+        function toggleRichMode() {
+            isRichMode = !isRichMode;
+            const richToolbar = document.getElementById('richTextToolbar');
+            const messageInput = document.getElementById('messageInput');
+            const richMessageInput = document.getElementById('richMessageInput');
+            const toggleButton = document.getElementById('richModeToggle');
+
+            if (isRichMode) {
+                richToolbar.classList.add('visible');
+                messageInput.style.display = 'none';
+                richMessageInput.classList.add('visible');
+                toggleButton.classList.add('checked');
+            } else {
+                richToolbar.classList.remove('visible');
+                messageInput.style.display = 'block';
+                richMessageInput.classList.remove('visible');
+                toggleButton.classList.remove('checked');
+            }
+        }
+
+        function sendQuickMessage(message) {
+            addMessage(message, 'user');
+            setTimeout(() => {
+                showTypingIndicator();
+                setTimeout(() => {
+                    hideTypingIndicator();
+                    const response = getAIResponse(message);
+                    addMessage(response, 'robot');
+                }, 2000);
+            }, 500);
+        }
+
+        function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const richMessageInput = document.getElementById('richMessageInput');
+            let message = '';
+
+            if (isRichMode) {
+                message = richMessageInput.innerText.trim();
+                richMessageInput.innerHTML = '';
+            } else {
+                message = messageInput.value.trim();
+                messageInput.value = '';
+                messageInput.style.height = 'auto';
+            }
+
+            if (message) {
+                addMessage(message, 'user');
+                setTimeout(() => {
+                    showTypingIndicator();
+                    setTimeout(() => {
+                        hideTypingIndicator();
+                        const response = getAIResponse(message);
+                        addMessage(response, 'robot');
+                    }, 2000);
+                }, 500);
+            }
+        }
+
+        function addMessage(content, type) {
+            const chatContainer = document.getElementById('chatContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+            
+            messageDiv.innerHTML = `
+                <div>
+                    <div class="message-bubble">${content.replace(/\n/g, '<br>')}</div>
+                    <div class="message-time">${timeStr}</div>
+                </div>
+            `;
+            
+            // 在打字指示器之前插入
+            const typingMessage = chatContainer.querySelector('.message.robot:last-child');
+            chatContainer.insertBefore(messageDiv, typingMessage);
+            
+            scrollToBottom();
+        }
+
+        function showTypingIndicator() {
+            document.getElementById('typingIndicator').style.display = 'block';
+            scrollToBottom();
+        }
+
+        function hideTypingIndicator() {
+            document.getElementById('typingIndicator').style.display = 'none';
+        }
+
+        function scrollToBottom() {
+            const scrollArea = document.getElementById('chatScrollArea');
+            scrollArea.scrollTop = scrollArea.scrollHeight;
+        }
+
+        function getAIResponse(message) {
+            message = message.toLowerCase();
+            
+            if (message.includes('挂号') || message.includes('预约')) {
+                return aiResponses['挂号'];
+            } else if (message.includes('头疼') || message.includes('头痛')) {
+                return aiResponses['头疼'];
+            } else if (message.includes('时间') || message.includes('营业')) {
+                return aiResponses['营业时间'];
+            } else if (message.includes('检查') || message.includes('结果')) {
+                return aiResponses['检查结果'];
+            } else if (message.includes('医保') || message.includes('报销')) {
+                return aiResponses['医保'];
+            } else if (message.includes('位置') || message.includes('地址') || message.includes('路线')) {
+                return aiResponses['位置'];
+            } else if (message.includes('急诊')) {
+                return aiResponses['急诊'];
+            } else {
+                return '感谢您的咨询！我正在努力理解您的问题。如果您需要更专业的帮助，我可以为您转接人工客服。您也可以尝试使用上方的快捷咨询选项。';
+            }
+        }
+
+        function requestHumanService() {
+            addMessage('我需要人工客服帮助', 'user');
+            setTimeout(() => {
+                addMessage('正在为您转接人工客服，请稍候...客服小王为您服务，请问有什么可以帮助您的？', 'robot');
+            }, 1000);
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function autoResize(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+        }
+
+        function clearChat() {
+            if (confirm('确定要清空对话记录吗？')) {
+                const chatContainer = document.getElementById('chatContainer');
+                // 保留欢迎消息和打字指示器
+                const welcomeMessage = chatContainer.children[0];
+                const typingMessage = chatContainer.children[chatContainer.children.length - 1];
+                chatContainer.innerHTML = '';
+                chatContainer.appendChild(welcomeMessage);
+                chatContainer.appendChild(typingMessage);
+            }
+        }
+
+        function saveChat() {
+            alert('对话记录已保存到本地');
+        }
+
+        function openSettings() {
+            alert('设置功能开发中...');
+        }
+
+        function insertEmoji() {
+            alert('表情功能开发中...');
+        }
+
+        // 富文本编辑功能
+        function toggleBold() { document.execCommand('bold'); }
+        function toggleItalic() { document.execCommand('italic'); }
+        function toggleUnderline() { document.execCommand('underline'); }
+        function toggleStrike() { document.execCommand('strikeThrough'); }
+        function changeTextColor() { 
+            const color = prompt('请输入颜色（如：red, #ff0000）：');
+            if (color) document.execCommand('foreColor', false, color);
+        }
+        function changeBgColor() { 
+            const color = prompt('请输入背景颜色（如：yellow, #ffff00）：');
+            if (color) document.execCommand('backColor', false, color);
+        }
+        function changeFont(font) { document.execCommand('fontName', false, font); }
+        function changeFontSize(size) { document.execCommand('fontSize', false, size); }
+        function insertImage() { alert('插入图片功能开发中...'); }
+        function insertFile() { alert('插入文件功能开发中...'); }
+    </script>
+</body>
+</html> 

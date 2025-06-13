@@ -11,14 +11,18 @@
 
 struct UserInfo {
     int id;
+    QString userId;      // 用户ID字符串
     QString username;
     QString email;
     QString phone;
     QString role;
     QString realName;
+    QString name;        // 显示名称，通常等于realName
     QDateTime createdAt;
     QDateTime lastLogin;
+    QDateTime lastLoginTime; // 别名，指向lastLogin
     int status;
+    bool isActive;       // 是否活跃，从status转换而来
     QString avatarPath;
 };
 
@@ -46,6 +50,30 @@ struct ChatMessage {
     QDateTime timestamp;
     int messageType; // 0-普通消息, 1-系统消息, 2-图片, 3-文件
     int isRead; // 0-未读, 1-已读
+};
+
+// 会话评价信息
+struct SessionRating {
+    int id;
+    int sessionId;
+    QString patientId;   // 患者ID字符串
+    QString staffId;     // 客服ID字符串
+    int rating; // 1-5星评价
+    QString comment;
+    QDateTime createdAt;
+    QDateTime ratingTime; // 别名，指向createdAt
+};
+
+// 快捷回复信息
+struct QuickReply {
+    int id;
+    QString title;
+    QString content;
+    QString category;
+    int sortOrder;
+    bool isActive;
+    QDateTime createdAt;
+    QDateTime updatedAt;
 };
 
 class DatabaseManager : public QObject
@@ -100,6 +128,23 @@ public:
     // 获取用户列表
     QList<UserInfo> getAllUsers();
     QList<UserInfo> getUsersByRole(const QString& role);
+    
+    // 会话评价管理
+    bool addSessionRating(int sessionId, int patientId, int staffId, int rating, const QString& comment = "");
+    SessionRating getSessionRating(int sessionId);
+    QList<SessionRating> getStaffRatings(int staffId);
+    QList<SessionRating> getAllSessionRatings();  // 新增方法
+    double getStaffAverageRating(int staffId);
+    bool hasSessionRating(int sessionId);
+    
+    // 快捷回复管理
+    QList<QuickReply> getAllQuickReplies();
+    QList<QuickReply> getQuickRepliesByCategory(const QString& category);
+    QList<QuickReply> getActiveQuickReplies();
+    bool addQuickReply(const QString& title, const QString& content, const QString& category, int sortOrder = 0);
+    bool updateQuickReply(int id, const QString& title, const QString& content, const QString& category, int sortOrder);
+    bool deleteQuickReply(int id);
+    bool toggleQuickReplyStatus(int id);
 
 signals:
     // 聊天相关信号

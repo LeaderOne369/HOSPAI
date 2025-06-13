@@ -11,6 +11,14 @@
 #include <QRandomGenerator>
 #include <QRegularExpression>
 #include <QDebug>
+#include <QToolBar>
+#include <QTextBrowser>
+#include <QTextCursor>
+#include <QColorDialog>
+#include <QTextBlock>
+#include <QTextFragment>
+#include <QTextImageFormat>
+#include <QRandomGenerator>
 
 ChatWidget::ChatWidget(QWidget *parent)
     : QWidget(parent)
@@ -19,7 +27,9 @@ ChatWidget::ChatWidget(QWidget *parent)
     , m_btnClearChat(nullptr)
     , m_btnSaveChat(nullptr)
     , m_btnSettings(nullptr)
+    , m_btnToggleRichMode(nullptr)
     , m_statusLabel(nullptr)
+    , m_richTextToolbar(nullptr)
     , m_chatScrollArea(nullptr)
     , m_chatContainer(nullptr)
     , m_chatLayout(nullptr)
@@ -31,6 +41,7 @@ ChatWidget::ChatWidget(QWidget *parent)
     , m_inputWidget(nullptr)
     , m_inputLayout(nullptr)
     , m_messageInput(nullptr)
+    , m_richMessageInput(nullptr)
     , m_btnSend(nullptr)
     , m_btnVoice(nullptr)
     , m_btnEmoji(nullptr)
@@ -38,6 +49,7 @@ ChatWidget::ChatWidget(QWidget *parent)
     , m_responseTimer(nullptr)
     , m_isAITyping(false)
     , m_isInitialized(false)
+    , m_isRichMode(false)
     , m_messageCount(0)
     , m_dbManager(nullptr)
     , m_aiApiClient(new AIApiClient(this))
@@ -68,7 +80,12 @@ ChatWidget::ChatWidget(QWidget *parent)
     // 发送欢迎消息
     QTimer::singleShot(500, [this]() {
         AIMessage welcomeMsg;
-        welcomeMsg.content = "您好！我是医院智能分诊助手🏥\n\n我可以帮助您：\n• 🔍 分析症状，推荐合适科室\n• 📅 协助预约挂号流程\n• ❓ 解答就医相关问题\n• 🚨 识别紧急情况\n• 👤 转接人工客服\n\n请描述您的症状或点击下方快捷按钮开始咨询～";
+        welcomeMsg.content = "👋 您好！我是AI智能导诊助手，可以帮助您：\n\n"
+                            "🏥 科室推荐和医生介绍\n"
+                            "📅 预约挂号服务\n" 
+                            "💡 健康咨询和症状分析\n"
+                            "🆘 紧急情况处理指导\n\n"
+                            "请描述您的症状或选择下方快捷咨询选项：";
         welcomeMsg.type = MessageType::Robot;
         welcomeMsg.timestamp = QDateTime::currentDateTime();
         welcomeMsg.sessionId = m_currentSessionId;
@@ -100,9 +117,10 @@ void ChatWidget::setupUI()
 {
     m_mainLayout = new QVBoxLayout(this);
     m_mainLayout->setContentsMargins(15, 15, 15, 15);
-    m_mainLayout->setSpacing(10);
+    m_mainLayout->setSpacing(15);
     
     setupToolBar();
+    setupRichTextToolbar();
     setupChatArea();
     setupQuickButtonsArea();
     setupInputArea();
@@ -117,55 +135,172 @@ void ChatWidget::setupUI()
 
 void ChatWidget::setupToolBar()
 {
-    // 工具栏
     m_toolBarLayout = new QHBoxLayout;
+    m_toolBarLayout->setSpacing(10);
     
-    m_statusLabel = new QLabel("智能分诊助手");
-    m_statusLabel->setStyleSheet(R"(
-        QLabel {
-            font-size: 18px;
-            font-weight: bold;
-            color: #1D1D1F;
-            padding: 5px;
-        }
-    )");
+    m_btnClearChat = new QPushButton("清空对话");
+    m_btnSaveChat = new QPushButton("保存对话");
+    m_btnSettings = new QPushButton("设置");
+    m_btnToggleRichMode = new QPushButton("富文本模式");
+    m_btnToggleRichMode->setCheckable(true);
     
-    m_btnClearChat = new QPushButton("🗑️ 清空");
-    m_btnSaveChat = new QPushButton("💾 保存");
-    m_btnSettings = new QPushButton("⚙️ 设置");
+    m_statusLabel = new QLabel("AI智能导诊");
+    m_statusLabel->setAlignment(Qt::AlignCenter);
     
-    QString toolButtonStyle = R"(
+    QString buttonStyle = R"(
         QPushButton {
-            background-color: #F2F2F7;
+            background-color: white;
             border: 1px solid #D1D1D6;
             border-radius: 6px;
-            padding: 8px 12px;
+            padding: 8px 16px;
             font-size: 13px;
             color: #1D1D1F;
         }
         QPushButton:hover {
-            background-color: #E5E5EA;
+            background-color: #F2F2F7;
+            border-color: #007AFF;
         }
-        QPushButton:pressed {
-            background-color: #D1D1D6;
+        QPushButton:checked {
+            background-color: #007AFF;
+            color: white;
         }
     )";
     
-    m_btnClearChat->setStyleSheet(toolButtonStyle);
-    m_btnSaveChat->setStyleSheet(toolButtonStyle);
-    m_btnSettings->setStyleSheet(toolButtonStyle);
+    m_btnClearChat->setStyleSheet(buttonStyle);
+    m_btnSaveChat->setStyleSheet(buttonStyle);
+    m_btnSettings->setStyleSheet(buttonStyle);
+    m_btnToggleRichMode->setStyleSheet(buttonStyle);
+    
+    m_statusLabel->setStyleSheet(R"(
+        QLabel {
+            font-size: 16px;
+            font-weight: bold;
+            color: #1D1D1F;
+            padding: 8px;
+        }
+    )");
     
     connect(m_btnClearChat, &QPushButton::clicked, this, &ChatWidget::onClearChatClicked);
     connect(m_btnSaveChat, &QPushButton::clicked, this, &ChatWidget::onSaveChatClicked);
     connect(m_btnSettings, &QPushButton::clicked, this, &ChatWidget::onSettingsClicked);
+    connect(m_btnToggleRichMode, &QPushButton::clicked, this, &ChatWidget::onToggleRichMode);
     
-    m_toolBarLayout->addWidget(m_statusLabel);
-    m_toolBarLayout->addStretch();
     m_toolBarLayout->addWidget(m_btnClearChat);
     m_toolBarLayout->addWidget(m_btnSaveChat);
+    m_toolBarLayout->addStretch();
+    m_toolBarLayout->addWidget(m_statusLabel);
+    m_toolBarLayout->addStretch();
+    m_toolBarLayout->addWidget(m_btnToggleRichMode);
     m_toolBarLayout->addWidget(m_btnSettings);
     
     m_mainLayout->addLayout(m_toolBarLayout);
+}
+
+void ChatWidget::setupRichTextToolbar()
+{
+    m_richTextToolbar = new QToolBar("富文本工具栏", this);
+    m_richTextToolbar->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    m_richTextToolbar->setIconSize(QSize(20, 20));
+    
+    // 字体选择
+    m_fontComboBox = new QFontComboBox;
+    m_fontComboBox->setMaximumWidth(150);
+    connect(m_fontComboBox, &QFontComboBox::currentFontChanged,
+            this, [this](const QFont& font) { onFontFamilyChanged(font.family()); });
+    
+    // 字体大小
+    m_fontSizeSpinBox = new QSpinBox;
+    m_fontSizeSpinBox->setRange(8, 72);
+    m_fontSizeSpinBox->setValue(12);
+    m_fontSizeSpinBox->setMaximumWidth(60);
+    connect(m_fontSizeSpinBox, QOverload<int>::of(&QSpinBox::valueChanged),
+            this, &ChatWidget::onFontSizeChanged);
+    
+    // 格式化按钮
+    m_actionBold = m_richTextToolbar->addAction("B");
+    m_actionBold->setCheckable(true);
+    m_actionBold->setToolTip("粗体");
+    connect(m_actionBold, &QAction::triggered, this, &ChatWidget::onTextBold);
+    
+    m_actionItalic = m_richTextToolbar->addAction("I");
+    m_actionItalic->setCheckable(true);
+    m_actionItalic->setToolTip("斜体");
+    connect(m_actionItalic, &QAction::triggered, this, &ChatWidget::onTextItalic);
+    
+    m_actionUnderline = m_richTextToolbar->addAction("U");
+    m_actionUnderline->setCheckable(true);
+    m_actionUnderline->setToolTip("下划线");
+    connect(m_actionUnderline, &QAction::triggered, this, &ChatWidget::onTextUnderline);
+    
+    m_actionStrikeOut = m_richTextToolbar->addAction("S");
+    m_actionStrikeOut->setCheckable(true);
+    m_actionStrikeOut->setToolTip("删除线");
+    connect(m_actionStrikeOut, &QAction::triggered, this, &ChatWidget::onTextStrikeOut);
+    
+    m_richTextToolbar->addSeparator();
+    
+    // 颜色按钮
+    m_actionTextColor = m_richTextToolbar->addAction("🎨");
+    m_actionTextColor->setToolTip("文字颜色");
+    connect(m_actionTextColor, &QAction::triggered, this, &ChatWidget::onTextColor);
+    
+    m_actionBackgroundColor = m_richTextToolbar->addAction("🖍️");
+    m_actionBackgroundColor->setToolTip("背景颜色");
+    connect(m_actionBackgroundColor, &QAction::triggered, this, &ChatWidget::onTextBackgroundColor);
+    
+    m_richTextToolbar->addSeparator();
+    
+    // 插入功能
+    m_actionInsertImage = m_richTextToolbar->addAction("🖼️");
+    m_actionInsertImage->setToolTip("插入图片");
+    connect(m_actionInsertImage, &QAction::triggered, this, &ChatWidget::onInsertImage);
+    
+    m_actionInsertFile = m_richTextToolbar->addAction("📎");
+    m_actionInsertFile->setToolTip("插入文件");
+    connect(m_actionInsertFile, &QAction::triggered, this, &ChatWidget::onInsertFile);
+    
+    // 添加组件到工具栏
+    m_richTextToolbar->insertWidget(m_actionBold, new QLabel("字体: "));
+    m_richTextToolbar->insertWidget(m_actionBold, m_fontComboBox);
+    m_richTextToolbar->insertWidget(m_actionBold, new QLabel(" 大小: "));
+    m_richTextToolbar->insertWidget(m_actionBold, m_fontSizeSpinBox);
+    m_richTextToolbar->insertSeparator(m_actionBold);
+    
+    // 设置工具栏样式
+    m_richTextToolbar->setStyleSheet(R"(
+        QToolBar {
+            background-color: #F2F2F7;
+            border: 1px solid #D1D1D6;
+            border-radius: 8px;
+            padding: 5px;
+            spacing: 5px;
+        }
+        QToolButton {
+            background-color: white;
+            border: 1px solid #D1D1D6;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-weight: bold;
+            min-width: 24px;
+            min-height: 24px;
+        }
+        QToolButton:hover {
+            background-color: #E5E5EA;
+        }
+        QToolButton:checked {
+            background-color: #007AFF;
+            color: white;
+        }
+        QFontComboBox, QSpinBox {
+            border: 1px solid #D1D1D6;
+            border-radius: 4px;
+            padding: 2px 4px;
+            background-color: white;
+        }
+    )");
+    
+    m_richTextToolbar->hide(); // 初始隐藏，只在富文本模式下显示
+    m_mainLayout->addWidget(m_richTextToolbar);
 }
 
 void ChatWidget::setupChatArea()
@@ -258,9 +393,17 @@ void ChatWidget::setupInputArea()
     m_inputLayout->setContentsMargins(0, 0, 0, 0);
     m_inputLayout->setSpacing(10);
     
+    // 普通文本输入
     m_messageInput = new QTextEdit;
     m_messageInput->setMaximumHeight(100);
     m_messageInput->setPlaceholderText("请描述您的症状或问题...");
+    
+    // 富文本输入
+    m_richMessageInput = new QTextEdit;
+    m_richMessageInput->setMaximumHeight(150);
+    m_richMessageInput->setPlaceholderText("输入富文本内容，支持格式化、图片和文件...");
+    m_richMessageInput->setAcceptDrops(true);
+    m_richMessageInput->hide(); // 初始隐藏
     
     m_btnSend = new QPushButton("发送");
     m_btnVoice = new QPushButton("🎤");
@@ -316,14 +459,23 @@ void ChatWidget::setupInputArea()
     )";
     
     m_messageInput->setStyleSheet(inputStyle);
+    m_richMessageInput->setStyleSheet(inputStyle);
     m_btnSend->setStyleSheet(sendButtonStyle);
     m_btnVoice->setStyleSheet(iconButtonStyle);
     m_btnEmoji->setStyleSheet(iconButtonStyle);
     
     connect(m_messageInput, &QTextEdit::textChanged, this, &ChatWidget::onInputTextChanged);
-    connect(m_btnSend, &QPushButton::clicked, this, &ChatWidget::onSendMessage);
+    connect(m_richMessageInput, &QTextEdit::textChanged, this, &ChatWidget::onInputTextChanged);
+    connect(m_btnSend, &QPushButton::clicked, this, [this]() {
+        if (m_isRichMode) {
+            onSendRichMessage();
+        } else {
+            onSendMessage();
+        }
+    });
     
     m_inputLayout->addWidget(m_messageInput);
+    m_inputLayout->addWidget(m_richMessageInput);
     m_inputLayout->addWidget(m_btnVoice);
     m_inputLayout->addWidget(m_btnEmoji);
     m_inputLayout->addWidget(m_btnSend);
@@ -338,6 +490,10 @@ void ChatWidget::setupInputArea()
     m_responseTimer = new QTimer(this);
     m_responseTimer->setSingleShot(true);
     connect(m_responseTimer, &QTimer::timeout, this, &ChatWidget::onAIResponseReady);
+    
+    m_richResponseTimer = new QTimer(this);
+    m_richResponseTimer->setSingleShot(true);
+    connect(m_richResponseTimer, &QTimer::timeout, this, &ChatWidget::onRichAIResponseReady);
 }
 
 void ChatWidget::setupQuickButtons()
@@ -849,7 +1005,12 @@ void ChatWidget::clearInteractionComponents()
 // 其他槽函数的简单实现
 void ChatWidget::onInputTextChanged()
 {
-    bool hasText = !m_messageInput->toPlainText().trimmed().isEmpty();
+    bool hasText;
+    if (m_isRichMode) {
+        hasText = !m_richMessageInput->toPlainText().trimmed().isEmpty();
+    } else {
+        hasText = !m_messageInput->toPlainText().trimmed().isEmpty();
+    }
     m_btnSend->setEnabled(hasText && !m_isAITyping);
 }
 
@@ -1014,4 +1175,432 @@ void ChatWidget::onAIApiError(const QString& error)
     
     // 添加基础交互按钮
     addActionButtons({"🔍 症状自查", "📅 预约挂号", "👤 转人工客服"});
+}
+
+void ChatWidget::onToggleRichMode()
+{
+    m_isRichMode = m_btnToggleRichMode->isChecked();
+    
+    if (m_isRichMode) {
+        m_richTextToolbar->show();
+        m_messageInput->hide();
+        m_richMessageInput->show();
+        m_btnToggleRichMode->setText("普通模式");
+    } else {
+        m_richTextToolbar->hide();
+        m_messageInput->show();
+        m_richMessageInput->hide();
+        m_btnToggleRichMode->setText("富文本模式");
+    }
+    
+    // 切换模式后更新发送按钮状态
+    onInputTextChanged();
+}
+
+void ChatWidget::onTextBold()
+{
+    if (!m_richMessageInput) return;
+    
+    QTextCursor cursor = m_richMessageInput->textCursor();
+    QTextCharFormat format = cursor.charFormat();
+    format.setFontWeight(m_actionBold->isChecked() ? QFont::Bold : QFont::Normal);
+    cursor.mergeCharFormat(format);
+    m_richMessageInput->mergeCurrentCharFormat(format);
+}
+
+void ChatWidget::onTextItalic()
+{
+    if (!m_richMessageInput) return;
+    
+    QTextCursor cursor = m_richMessageInput->textCursor();
+    QTextCharFormat format = cursor.charFormat();
+    format.setFontItalic(m_actionItalic->isChecked());
+    cursor.mergeCharFormat(format);
+    m_richMessageInput->mergeCurrentCharFormat(format);
+}
+
+void ChatWidget::onTextUnderline()
+{
+    if (!m_richMessageInput) return;
+    
+    QTextCursor cursor = m_richMessageInput->textCursor();
+    QTextCharFormat format = cursor.charFormat();
+    format.setFontUnderline(m_actionUnderline->isChecked());
+    cursor.mergeCharFormat(format);
+    m_richMessageInput->mergeCurrentCharFormat(format);
+}
+
+void ChatWidget::onTextStrikeOut()
+{
+    if (!m_richMessageInput) return;
+    
+    QTextCursor cursor = m_richMessageInput->textCursor();
+    QTextCharFormat format = cursor.charFormat();
+    format.setFontStrikeOut(m_actionStrikeOut->isChecked());
+    cursor.mergeCharFormat(format);
+    m_richMessageInput->mergeCurrentCharFormat(format);
+}
+
+void ChatWidget::onTextColor()
+{
+    if (!m_richMessageInput) return;
+    
+    QColor color = QColorDialog::getColor(Qt::black, this, "选择文字颜色");
+    if (color.isValid()) {
+        QTextCursor cursor = m_richMessageInput->textCursor();
+        QTextCharFormat format = cursor.charFormat();
+        format.setForeground(color);
+        cursor.mergeCharFormat(format);
+        m_richMessageInput->mergeCurrentCharFormat(format);
+    }
+}
+
+void ChatWidget::onTextBackgroundColor()
+{
+    if (!m_richMessageInput) return;
+    
+    QColor color = QColorDialog::getColor(Qt::white, this, "选择背景颜色");
+    if (color.isValid()) {
+        QTextCursor cursor = m_richMessageInput->textCursor();
+        QTextCharFormat format = cursor.charFormat();
+        format.setBackground(color);
+        cursor.mergeCharFormat(format);
+        m_richMessageInput->mergeCurrentCharFormat(format);
+    }
+}
+
+void ChatWidget::onFontFamilyChanged(const QString& fontFamily)
+{
+    if (!m_richMessageInput) return;
+    
+    QTextCursor cursor = m_richMessageInput->textCursor();
+    QTextCharFormat format = cursor.charFormat();
+    format.setFontFamilies({fontFamily});
+    cursor.mergeCharFormat(format);
+    m_richMessageInput->mergeCurrentCharFormat(format);
+}
+
+void ChatWidget::onFontSizeChanged(int size)
+{
+    if (!m_richMessageInput) return;
+    
+    QTextCursor cursor = m_richMessageInput->textCursor();
+    QTextCharFormat format = cursor.charFormat();
+    format.setFontPointSize(size);
+    cursor.mergeCharFormat(format);
+    m_richMessageInput->mergeCurrentCharFormat(format);
+}
+
+void ChatWidget::onInsertImage()
+{
+    if (!m_richMessageInput) return;
+    
+    QString imagePath = QFileDialog::getOpenFileName(this, 
+        "选择图片", "", "图片文件 (*.png *.jpg *.jpeg *.gif *.bmp)");
+    
+    if (!imagePath.isEmpty()) {
+        insertImageIntoEditor(imagePath);
+    }
+}
+
+void ChatWidget::onInsertFile()
+{
+    if (!m_richMessageInput) return;
+    
+    QString filePath = QFileDialog::getOpenFileName(this, 
+        "选择文件", "", "所有文件 (*)");
+    
+    if (!filePath.isEmpty()) {
+        insertFileIntoEditor(filePath);
+    }
+}
+
+void ChatWidget::insertImageIntoEditor(const QString& imagePath)
+{
+    QFileInfo fileInfo(imagePath);
+    if (!fileInfo.exists()) return;
+    
+    // 读取图片并调整大小
+    QPixmap pixmap(imagePath);
+    if (pixmap.isNull()) return;
+    
+    // 限制图片大小
+    int maxWidth = 300;
+    int maxHeight = 200;
+    if (pixmap.width() > maxWidth || pixmap.height() > maxHeight) {
+        pixmap = pixmap.scaled(maxWidth, maxHeight, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    }
+    
+    // 创建图片名称
+    QString imageName = QString("image_%1").arg(QDateTime::currentMSecsSinceEpoch());
+    
+    // 添加到文档
+    QTextDocument* doc = m_richMessageInput->document();
+    doc->addResource(QTextDocument::ImageResource, QUrl(imageName), pixmap);
+    
+    // 插入图片
+    QTextCursor cursor = m_richMessageInput->textCursor();
+    QTextImageFormat imageFormat;
+    imageFormat.setName(imageName);
+    imageFormat.setWidth(pixmap.width());
+    imageFormat.setHeight(pixmap.height());
+    cursor.insertImage(imageFormat);
+    
+    m_richMessageInput->setTextCursor(cursor);
+}
+
+void ChatWidget::insertFileIntoEditor(const QString& filePath)
+{
+    QFileInfo fileInfo(filePath);
+    if (!fileInfo.exists()) return;
+    
+    QString fileName = fileInfo.fileName();
+    QString fileSize = QString::number(fileInfo.size() / 1024.0, 'f', 1) + " KB";
+    
+    // 插入文件链接
+    QTextCursor cursor = m_richMessageInput->textCursor();
+    QString fileHtml = QString("<p>📎 <a href=\"file:///%1\">%2</a> (%3)</p>")
+                      .arg(filePath)
+                      .arg(fileName)
+                      .arg(fileSize);
+    
+    cursor.insertHtml(fileHtml);
+    m_richMessageInput->setTextCursor(cursor);
+}
+
+void ChatWidget::onSendRichMessage()
+{
+    if (!m_richMessageInput || m_richMessageInput->toPlainText().trimmed().isEmpty()) {
+        return;
+    }
+    
+    QString plainText = m_richMessageInput->toPlainText().trimmed();
+    QString htmlContent = m_richMessageInput->toHtml();
+    
+    // 创建富文本消息
+    RichMessage userMsg;
+    userMsg.content = plainText;
+    userMsg.htmlContent = htmlContent;
+    userMsg.type = MessageType::User;
+    userMsg.contentType = RichContentType::RichText;
+    userMsg.timestamp = QDateTime::currentDateTime();
+    userMsg.sessionId = m_currentSessionId;
+    
+    // 检查是否包含图片或文件
+    QTextDocument* doc = m_richMessageInput->document();
+    QTextBlock block = doc->firstBlock();
+    while (block.isValid()) {
+        QTextBlock::iterator it;
+        for (it = block.begin(); !(it.atEnd()); ++it) {
+            QTextFragment fragment = it.fragment();
+            if (fragment.isValid()) {
+                QTextCharFormat format = fragment.charFormat();
+                if (format.isImageFormat()) {
+                    QTextImageFormat imageFormat = format.toImageFormat();
+                    userMsg.attachments.append(imageFormat.name());
+                    userMsg.contentType = RichContentType::Mixed;
+                }
+            }
+        }
+        block = block.next();
+    }
+    
+    addRichMessage(userMsg);
+    m_richMessageInput->clear();
+    
+    // 模拟AI响应 - 在富文本模式下
+    m_isAITyping = true;
+    m_statusLabel->setText("AI正在思考中...");
+    m_btnSend->setEnabled(false);
+    
+    QString aiResponse = generateAIResponse(plainText);
+    m_pendingRichResponse = aiResponse;
+    m_pendingResponsePlainText = plainText;  // 保存用户输入用于分析
+    m_richResponseTimer->start(1500 + QRandomGenerator::global()->bounded(1000));
+}
+
+void ChatWidget::addRichMessage(const RichMessage& message)
+{
+    m_richChatHistory.append(message);
+    displayRichMessage(message);
+    m_messageCount++;
+    
+    // 自动保存每10条消息
+    if (m_messageCount % 10 == 0) {
+        saveRichChatHistory();
+    }
+}
+
+void ChatWidget::displayRichMessage(const RichMessage& message)
+{
+    QWidget* messageWidget = createRichMessageBubble(message);
+    
+    // 移除最后的弹性空间，添加新消息，再添加弹性空间
+    m_chatLayout->removeItem(m_chatLayout->itemAt(m_chatLayout->count() - 1));
+    m_chatLayout->addWidget(messageWidget);
+    m_chatLayout->addStretch();
+    
+    // 滚动到底部
+    QTimer::singleShot(100, this, &ChatWidget::scrollToBottom);
+}
+
+QWidget* ChatWidget::createRichMessageBubble(const RichMessage& message)
+{
+    QWidget* messageWidget = new QWidget;
+    QHBoxLayout* messageLayout = new QHBoxLayout(messageWidget);
+    messageLayout->setContentsMargins(0, 0, 0, 0);
+    
+    // 创建消息内容显示
+    QTextBrowser* contentBrowser = new QTextBrowser;
+    contentBrowser->setMaximumHeight(300);
+    contentBrowser->setOpenExternalLinks(false);
+    contentBrowser->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    contentBrowser->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    
+    // 设置内容
+    if (message.contentType == RichContentType::RichText || message.contentType == RichContentType::Mixed) {
+        contentBrowser->setHtml(message.htmlContent);
+    } else {
+        contentBrowser->setPlainText(message.content);
+    }
+    
+    // 时间戳
+    QLabel* timeLabel = new QLabel(formatTimestamp(message.timestamp));
+    timeLabel->setStyleSheet("color: #8E8E93; font-size: 11px;");
+    
+    QString bubbleStyle;
+    if (message.type == MessageType::User) {
+        // 用户消息 - 右对齐，蓝色
+        bubbleStyle = R"(
+            QTextBrowser {
+                background-color: #007AFF;
+                color: white;
+                border-radius: 12px;
+                padding: 12px 16px;
+                margin-left: 60px;
+                font-size: 14px;
+                line-height: 1.4;
+                border: none;
+            }
+        )";
+        messageLayout->addStretch();
+        
+        QVBoxLayout* rightLayout = new QVBoxLayout;
+        rightLayout->addWidget(contentBrowser);
+        rightLayout->addWidget(timeLabel);
+        timeLabel->setAlignment(Qt::AlignRight);
+        
+        messageLayout->addLayout(rightLayout);
+        
+    } else {
+        // 机器人消息 - 左对齐，灰色
+        bubbleStyle = R"(
+            QTextBrowser {
+                background-color: #F2F2F7;
+                color: #1D1D1F;
+                border-radius: 12px;
+                padding: 12px 16px;
+                margin-right: 60px;
+                font-size: 14px;
+                line-height: 1.4;
+                border: none;
+            }
+        )";
+        
+        // 添加机器人头像
+        QLabel* avatarLabel = new QLabel("🤖");
+        avatarLabel->setFixedSize(32, 32);
+        avatarLabel->setAlignment(Qt::AlignCenter);
+        avatarLabel->setStyleSheet(R"(
+            QLabel {
+                background-color: #34C759;
+                border-radius: 16px;
+                font-size: 16px;
+            }
+        )");
+        
+        QVBoxLayout* leftLayout = new QVBoxLayout;
+        leftLayout->addWidget(contentBrowser);
+        leftLayout->addWidget(timeLabel);
+        timeLabel->setAlignment(Qt::AlignLeft);
+        
+        messageLayout->addWidget(avatarLabel);
+        messageLayout->addLayout(leftLayout);
+        messageLayout->addStretch();
+    }
+    
+    contentBrowser->setStyleSheet(bubbleStyle);
+    
+    return messageWidget;
+}
+
+void ChatWidget::saveRichChatHistory()
+{
+    if (!m_dbManager) return;
+    
+    // 实现富文本聊天记录保存
+    // 这里需要扩展数据库以支持富文本内容
+    // 暂时使用JSON格式存储富文本数据
+    for (const RichMessage& msg : m_richChatHistory) {
+        // TODO: 实现富文本数据库存储
+    }
+}
+
+void ChatWidget::loadRichChatHistory()
+{
+    if (!m_dbManager) return;
+    
+    // 实现富文本聊天记录加载
+    // TODO: 从数据库加载富文本记录
+}
+
+void ChatWidget::onRichAIResponseReady()
+{
+    m_isAITyping = false;
+    m_statusLabel->setText("智能分诊助手");
+    m_btnSend->setEnabled(true);
+    
+    if (!m_pendingRichResponse.isEmpty()) {
+        // 创建富文本AI响应消息
+        RichMessage aiMsg;
+        aiMsg.content = m_pendingRichResponse;
+        aiMsg.htmlContent = convertToRichText(m_pendingRichResponse);
+        aiMsg.type = MessageType::Robot;
+        aiMsg.contentType = RichContentType::Text;  // AI响应暂时为纯文本
+        aiMsg.timestamp = QDateTime::currentDateTime();
+        aiMsg.sessionId = m_currentSessionId;
+        
+        addRichMessage(aiMsg);
+        m_pendingRichResponse.clear();
+        
+        // 在富文本模式下也分析是否需要添加交互组件
+        TriageAdvice advice = analyzeSymptoms(m_pendingResponsePlainText);
+        if (!advice.department.isEmpty()) {
+            processTriageAdvice(advice);
+        }
+        
+        m_pendingResponsePlainText.clear();
+    }
+}
+
+QString ChatWidget::convertToRichText(const QString& plainText)
+{
+    // 将纯文本转换为基本的富文本格式
+    QString richText = plainText;
+    
+    // 转换换行符为HTML格式
+    richText.replace('\n', "<br>");
+    
+    // 识别并格式化一些关键词
+    richText.replace(QRegularExpression("(⚠️[^\\n]*紧急[^\\n]*)"), "<span style='color: #FF3B30; font-weight: bold;'>\\1</span>");
+    richText.replace(QRegularExpression("(🌡️[^\\n]*)"), "<span style='color: #FF9500;'>\\1</span>");
+    richText.replace(QRegularExpression("(🧠[^\\n]*)"), "<span style='color: #5856D6;'>\\1</span>");
+    richText.replace(QRegularExpression("(🫁[^\\n]*)"), "<span style='color: #34C759;'>\\1</span>");
+    richText.replace(QRegularExpression("(🏥[^\\n]*)"), "<span style='color: #007AFF;'>\\1</span>");
+    richText.replace(QRegularExpression("(📱[^\\n]*)"), "<span style='color: #5AC8FA;'>\\1</span>");
+    
+    // 格式化科室名称
+    richText.replace(QRegularExpression("([内外妇儿急皮眼耳口中][科医]*)："), "<span style='font-weight: bold; color: #007AFF;'>\\1：</span>");
+    
+    return richText;
 } 

@@ -141,6 +141,7 @@ void SideMenuWidget::setupAdminMenu()
 {
     addMenuItem("👤 用户管理", "user_manage", MenuAction::AdminUserManage);
     addMenuItem("📊 数据统计", "stats", MenuAction::AdminStats);
+    addMenuItem("⭐ 评价管理", "rating", MenuAction::AdminRatingManage);
     addMenuItem("⚙️ 系统设置", "system", MenuAction::AdminSystem);
 }
 

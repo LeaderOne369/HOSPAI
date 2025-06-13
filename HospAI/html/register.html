@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HospAI - 注册账号</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background-color: #f8f9fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .register-container {
+            background: white;
+            border: 2px solid #dee2e6;
+            border-radius: 15px;
+            padding: 40px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .title {
+            text-align: center;
+            font-size: 28px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            text-align: center;
+            font-size: 14px;
+            color: #6c757d;
+            margin-bottom: 30px;
+        }
+
+        .input-section {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 5px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #E5E5EA;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #007AFF;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        .password-strength {
+            width: 100%;
+            height: 8px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+
+        .password-strength-bar {
+            height: 100%;
+            background-color: #28a745;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .password-strength.weak .password-strength-bar {
+            background-color: #dc3545;
+        }
+
+        .password-strength.medium .password-strength-bar {
+            background-color: #ffc107;
+        }
+
+        .password-strength.strong .password-strength-bar {
+            background-color: #28a745;
+        }
+
+        .button-section {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-cancel {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn-cancel:hover {
+            background-color: #5a6268;
+        }
+
+        .btn-register {
+            background-color: #007AFF;
+            color: white;
+        }
+
+        .btn-register:hover {
+            background-color: #0056CC;
+        }
+
+        .btn-register:disabled {
+            background-color: #C7C7CC;
+            cursor: not-allowed;
+        }
+
+        .message {
+            text-align: center;
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 6px;
+            display: none;
+        }
+
+        .message.error {
+            background-color: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+        }
+
+        .message.success {
+            background-color: #e8f5e8;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+        }
+    </style>
+</head>
+<body>
+    <div class="register-container">
+        <div class="title">创建账号</div>
+        <div class="subtitle">请填写以下信息完成注册</div>
+        
+        <div class="input-section">
+            <div class="form-group">
+                <label for="role">注册身份:</label>
+                <select id="role">
+                    <option value="患者">👨‍⚕️ 患者</option>
+                    <option value="客服">👩‍💼 客服</option>
+                    <option value="管理员">👨‍💻 管理员</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="username">用户名:</label>
+                <input type="text" id="username" placeholder="请输入用户名">
+                <div class="hint">3-20个字符，支持字母、数字、下划线</div>
+            </div>
+            
+            <div class="form-group">
+                <label for="realName">真实姓名:</label>
+                <input type="text" id="realName" placeholder="请输入真实姓名">
+            </div>
+            
+            <div class="form-group">
+                <label for="email">邮箱:</label>
+                <input type="email" id="email" placeholder="请输入邮箱地址">
+                <div class="hint">用于找回密码和接收通知</div>
+            </div>
+            
+            <div class="form-group">
+                <label for="phone">手机号:</label>
+                <input type="tel" id="phone" placeholder="请输入手机号（可选）">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">密码:</label>
+                <input type="password" id="password" placeholder="请输入密码">
+                <div class="password-strength" id="passwordStrength">
+                    <div class="password-strength-bar"></div>
+                </div>
+                <div class="hint">至少6个字符，建议包含大小写字母、数字和特殊字符</div>
+            </div>
+            
+            <div class="form-group">
+                <label for="confirmPassword">确认密码:</label>
+                <input type="password" id="confirmPassword" placeholder="请再次输入密码">
+                <div class="hint" id="passwordMatch"></div>
+            </div>
+        </div>
+        
+        <div class="button-section">
+            <button class="btn btn-cancel" type="button" onclick="window.close()">取消</button>
+            <button class="btn btn-register" id="registerBtn" disabled>注册</button>
+        </div>
+        
+        <div class="message" id="message"></div>
+    </div>
+
+    <script>
+        const usernameInput = document.getElementById('username');
+        const realNameInput = document.getElementById('realName');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const confirmPasswordInput = document.getElementById('confirmPassword');
+        const registerBtn = document.getElementById('registerBtn');
+        const messageDiv = document.getElementById('message');
+        const passwordStrength = document.getElementById('passwordStrength');
+        const passwordMatchHint = document.getElementById('passwordMatch');
+
+        function validateUsername(username) {
+            const regex = /^[a-zA-Z0-9_]{3,20}$/;
+            return regex.test(username);
+        }
+
+        function validateEmail(email) {
+            const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return regex.test(email);
+        }
+
+        function calculatePasswordStrength(password) {
+            let strength = 0;
+            if (password.length >= 6) strength += 25;
+            if (password.length >= 10) strength += 25;
+            if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength += 25;
+            if (/[0-9]/.test(password)) strength += 15;
+            if (/[^a-zA-Z0-9]/.test(password)) strength += 10;
+            return Math.min(strength, 100);
+        }
+
+        function updatePasswordStrength() {
+            const password = passwordInput.value;
+            const strength = calculatePasswordStrength(password);
+            const bar = passwordStrength.querySelector('.password-strength-bar');
+            
+            bar.style.width = strength + '%';
+            
+            passwordStrength.className = 'password-strength';
+            if (strength < 40) {
+                passwordStrength.classList.add('weak');
+            } else if (strength < 70) {
+                passwordStrength.classList.add('medium');
+            } else {
+                passwordStrength.classList.add('strong');
+            }
+        }
+
+        function updatePasswordMatch() {
+            const password = passwordInput.value;
+            const confirmPassword = confirmPasswordInput.value;
+            
+            if (confirmPassword.length === 0) {
+                passwordMatchHint.textContent = '';
+                return;
+            }
+            
+            if (password === confirmPassword) {
+                passwordMatchHint.textContent = '✓ 密码匹配';
+                passwordMatchHint.style.color = '#28a745';
+            } else {
+                passwordMatchHint.textContent = '✗ 密码不匹配';
+                passwordMatchHint.style.color = '#dc3545';
+            }
+        }
+
+        function checkFormValidity() {
+            const username = usernameInput.value.trim();
+            const realName = realNameInput.value.trim();
+            const email = emailInput.value.trim();
+            const password = passwordInput.value;
+            const confirmPassword = confirmPasswordInput.value;
+
+            const isValid = validateUsername(username) &&
+                           realName.length > 0 &&
+                           validateEmail(email) &&
+                           password.length >= 6 &&
+                           password === confirmPassword;
+
+            registerBtn.disabled = !isValid;
+        }
+
+        // 绑定事件
+        usernameInput.addEventListener('input', checkFormValidity);
+        realNameInput.addEventListener('input', checkFormValidity);
+        emailInput.addEventListener('input', checkFormValidity);
+        passwordInput.addEventListener('input', function() {
+            updatePasswordStrength();
+            updatePasswordMatch();
+            checkFormValidity();
+        });
+        confirmPasswordInput.addEventListener('input', function() {
+            updatePasswordMatch();
+            checkFormValidity();
+        });
+
+        registerBtn.addEventListener('click', function() {
+            const formData = {
+                role: document.getElementById('role').value,
+                username: usernameInput.value.trim(),
+                realName: realNameInput.value.trim(),
+                email: emailInput.value.trim(),
+                phone: document.getElementById('phone').value.trim(),
+                password: passwordInput.value
+            };
+
+            // 模拟注册过程
+            showMessage('正在注册...', 'success');
+            
+            setTimeout(() => {
+                showMessage('注册成功！您可以使用新账号登录了。', 'success');
+                setTimeout(() => {
+                    window.close();
+                }, 2000);
+            }, 1500);
+        });
+
+        function showMessage(text, type) {
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type}`;
+            messageDiv.style.display = 'block';
+            
+            if (type === 'error') {
+                setTimeout(() => {
+                    messageDiv.style.display = 'none';
+                }, 3000);
+            }
+        }
+    </script>
+</body>
+</html> 

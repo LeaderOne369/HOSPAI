@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HospAI - 患者常见问题</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+
+        /* 搜索区域 - 对应Qt的m_searchLayout */
+        .search-layout {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            align-items: center;
+        }
+
+        .search-input {
+            flex: 1;
+            border: 2px solid #E5E5EA;
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 16px;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #007AFF;
+        }
+
+        .search-button {
+            background-color: #007AFF;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .search-button:hover {
+            background-color: #0056CC;
+        }
+
+        /* 内容布局 - 对应Qt的m_contentLayout (QHBoxLayout) */
+        .content-layout {
+            display: flex;
+            gap: 20px;
+            height: 600px;
+        }
+
+        /* 左侧面板 - 对应Qt的leftWidget */
+        .left-widget {
+            width: 400px;
+            flex-shrink: 0;
+        }
+
+        /* 分组框样式 - 对应Qt的QGroupBox */
+        .group-box {
+            font-weight: bold;
+            border: 2px solid #E5E5EA;
+            border-radius: 8px;
+            margin-top: 10px;
+            padding-top: 10px;
+            margin-bottom: 15px;
+        }
+
+        .group-box-title {
+            position: relative;
+            top: -20px;
+            left: 10px;
+            background: white;
+            padding: 0 10px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        /* 分类列表 - 对应Qt的m_categoryList */
+        .category-group {
+            height: 150px;
+        }
+
+        .category-list {
+            border: 1px solid #CED4DA;
+            border-radius: 6px;
+            background-color: white;
+            height: 120px;
+            overflow-y: auto;
+            margin: 0 10px 10px 10px;
+        }
+
+        .category-item {
+            padding: 10px;
+            border-bottom: 1px solid #F1F3F4;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .category-item:hover {
+            background-color: #F2F2F7;
+        }
+
+        .category-item.selected {
+            background-color: #007AFF;
+            color: white;
+        }
+
+        /* 问题列表 - 对应Qt的m_faqList */
+        .faq-group {
+            flex: 1;
+        }
+
+        .faq-list {
+            border: 1px solid #CED4DA;
+            border-radius: 6px;
+            background-color: white;
+            height: calc(100% - 40px);
+            overflow-y: auto;
+            margin: 0 10px 10px 10px;
+        }
+
+        .faq-item {
+            padding: 10px;
+            border-bottom: 1px solid #F1F3F4;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .faq-item:hover {
+            background-color: #F2F2F7;
+        }
+
+        .faq-item.selected {
+            background-color: #007AFF;
+            color: white;
+        }
+
+        /* 右侧答案显示 - 对应Qt的m_answerGroup */
+        .answer-group {
+            flex: 2;
+        }
+
+        .answer-display {
+            border: 1px solid #CED4DA;
+            border-radius: 6px;
+            background-color: white;
+            padding: 15px;
+            font-size: 14px;
+            line-height: 1.6;
+            height: calc(100% - 80px);
+            overflow-y: auto;
+            margin: 0 10px 15px 10px;
+        }
+
+        .answer-placeholder {
+            color: #6c757d;
+            font-style: italic;
+            text-align: center;
+            padding-top: 50px;
+        }
+
+        /* 反馈按钮布局 - 对应Qt的feedbackLayout */
+        .feedback-layout {
+            display: flex;
+            align-items: center;
+            margin: 0 10px;
+            gap: 15px;
+        }
+
+        .feedback-label {
+            color: #495057;
+        }
+
+        .feedback-button {
+            border: none;
+            border-radius: 6px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .helpful-button {
+            background-color: #34C759;
+            color: white;
+        }
+
+        .helpful-button:hover {
+            background-color: #30B24A;
+        }
+
+        .not-helpful-button {
+            background-color: #FF3B30;
+            color: white;
+        }
+
+        .not-helpful-button:hover {
+            background-color: #E5292F;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- 搜索区域 - 对应Qt的m_searchLayout -->
+        <div class="search-layout">
+            <input type="text" class="search-input" placeholder="搜索问题关键词..." id="searchInput" />
+            <button class="search-button" onclick="searchFAQ()">🔍 搜索</button>
+        </div>
+
+        <!-- 内容区域 - 对应Qt的m_contentLayout -->
+        <div class="content-layout">
+            <!-- 左侧面板 - 对应Qt的leftWidget -->
+            <div class="left-widget">
+                <!-- 分类列表 - 对应Qt的m_categoryGroup -->
+                <div class="group-box category-group">
+                    <div class="group-box-title">问题分类</div>
+                    <div class="category-list" id="categoryList">
+                        <div class="category-item selected" onclick="selectCategory(this, '全部')">全部</div>
+                        <div class="category-item" onclick="selectCategory(this, '挂号预约')">挂号预约</div>
+                        <div class="category-item" onclick="selectCategory(this, '就诊流程')">就诊流程</div>
+                        <div class="category-item" onclick="selectCategory(this, '科室介绍')">科室介绍</div>
+                        <div class="category-item" onclick="selectCategory(this, '检查检验')">检查检验</div>
+                        <div class="category-item" onclick="selectCategory(this, '医保报销')">医保报销</div>
+                        <div class="category-item" onclick="selectCategory(this, '其他服务')">其他服务</div>
+                    </div>
+                </div>
+
+                <!-- 问题列表 - 对应Qt的m_faqGroup -->
+                <div class="group-box faq-group">
+                    <div class="group-box-title">常见问题</div>
+                    <div class="faq-list" id="faqList">
+                        <div class="faq-item" onclick="selectFAQ(this, 0)">如何网上预约挂号？</div>
+                        <div class="faq-item" onclick="selectFAQ(this, 1)">预约挂号需要提前多长时间？</div>
+                        <div class="faq-item" onclick="selectFAQ(this, 2)">初次就诊需要办理什么手续？</div>
+                        <div class="faq-item" onclick="selectFAQ(this, 3)">就诊当天的流程是什么？</div>
+                        <div class="faq-item" onclick="selectFAQ(this, 4)">各科室的位置在哪里？</div>
+                        <div class="faq-item" onclick="selectFAQ(this, 5)">检查前需要注意什么？</div>
+                        <div class="faq-item" onclick="selectFAQ(this, 6)">医保报销比例是多少？</div>
+                        <div class="faq-item" onclick="selectFAQ(this, 7)">医院有停车场吗？</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧答案显示 - 对应Qt的m_answerGroup -->
+            <div class="group-box answer-group">
+                <div class="group-box-title">详细解答</div>
+                <div class="answer-display" id="answerDisplay">
+                    <div class="answer-placeholder">请从左侧选择问题查看详细解答...</div>
+                </div>
+                
+                <!-- 反馈按钮 - 对应Qt的feedbackLayout -->
+                <div class="feedback-layout">
+                    <span class="feedback-label">这个答案对您有帮助吗？</span>
+                    <div style="flex: 1;"></div>
+                    <button class="feedback-button helpful-button" onclick="provideFeedback(true)">👍 有帮助</button>
+                    <button class="feedback-button not-helpful-button" onclick="provideFeedback(false)">👎 没帮助</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // FAQ数据
+        const faqData = [
+            {
+                category: "挂号预约",
+                question: "如何网上预约挂号？",
+                answer: `您可以通过以下方式进行网上预约：
+
+1. 关注医院官方微信公众号
+2. 下载医院官方APP
+3. 登录医院官网
+4. 拨打预约电话
+
+预约时需要提供您的身份证号码和手机号码。`
+            },
+            {
+                category: "挂号预约",
+                question: "预约挂号需要提前多长时间？",
+                answer: `我院预约挂号服务时间安排：
+
+• 普通门诊：可预约7天内号源
+• 专家门诊：可预约14天内号源
+• 特需门诊：可预约30天内号源
+
+建议您提前1-3天预约，以确保有合适的时间段。`
+            },
+            {
+                category: "就诊流程",
+                question: "初次就诊需要办理什么手续？",
+                answer: `初次就诊需要办理以下手续：
+
+1. 携带有效身份证件
+2. 在一楼大厅办理就诊卡
+3. 如有医保请带医保卡
+4. 到相应科室取号就诊
+
+办卡时间：周一至周日 7:00-17:00`
+            },
+            {
+                category: "就诊流程",
+                question: "就诊当天的流程是什么？",
+                answer: `就诊当天流程：
+
+1. 到院取号（如已预约）
+2. 科室候诊
+3. 医生诊疗
+4. 缴费取药/检查
+5. 复诊预约（如需要）
+
+请提前30分钟到达医院，留出足够时间。`
+            },
+            {
+                category: "科室介绍",
+                question: "各科室的位置在哪里？",
+                answer: `科室分布：
+
+• 1楼：挂号收费、药房、急诊科
+• 2楼：内科、外科门诊
+• 3楼：妇产科、儿科
+• 4楼：眼科、耳鼻喉科
+• 5楼：检验科、影像科
+
+详细位置请参考院内导向标识。`
+            },
+            {
+                category: "检查检验",
+                question: "检查前需要注意什么？",
+                answer: `不同检查的注意事项：
+
+• 血常规：无需空腹
+• 生化检查：需空腹8-12小时
+• B超检查：根据部位确定是否需要憋尿
+• CT/MRI：请提前告知是否有金属植入物
+
+具体要求请咨询开单医生。`
+            },
+            {
+                category: "医保报销",
+                question: "医保报销比例是多少？",
+                answer: `医保报销比例：
+
+• 职工医保：门诊70-90%，住院85-95%
+• 居民医保：门诊50-70%，住院70-85%
+• 新农合：门诊50-60%，住院60-80%
+
+具体比例因地区和政策而异，请咨询医保窗口。`
+            },
+            {
+                category: "其他服务",
+                question: "医院有停车场吗？",
+                answer: `医院停车信息：
+
+• 地下停车场：300个车位
+• 地面停车场：150个车位
+• 收费标准：前30分钟免费，之后每小时5元
+• 开放时间：24小时
+
+建议使用公共交通工具。`
+            }
+        ];
+
+        let currentCategory = '全部';
+        let filteredData = [...faqData];
+
+        function selectCategory(element, category) {
+            // 更新选中状态
+            document.querySelectorAll('.category-item').forEach(item => item.classList.remove('selected'));
+            element.classList.add('selected');
+            
+            currentCategory = category;
+            filterFAQs();
+        }
+
+        function filterFAQs() {
+            const searchText = document.getElementById('searchInput').value.toLowerCase();
+            
+            filteredData = faqData.filter(item => {
+                const matchCategory = currentCategory === '全部' || item.category === currentCategory;
+                const matchSearch = searchText === '' || 
+                                  item.question.toLowerCase().includes(searchText) ||
+                                  item.answer.toLowerCase().includes(searchText);
+                return matchCategory && matchSearch;
+            });
+            
+            updateFAQList();
+        }
+
+        function updateFAQList() {
+            const faqList = document.getElementById('faqList');
+            faqList.innerHTML = '';
+            
+            filteredData.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'faq-item';
+                div.textContent = item.question;
+                div.onclick = () => selectFAQ(div, index);
+                faqList.appendChild(div);
+            });
+        }
+
+        function selectFAQ(element, index) {
+            // 更新选中状态
+            document.querySelectorAll('.faq-item').forEach(item => item.classList.remove('selected'));
+            element.classList.add('selected');
+            
+            // 显示答案
+            const answerDisplay = document.getElementById('answerDisplay');
+            const faq = filteredData[index];
+            answerDisplay.innerHTML = faq.answer.replace(/\n/g, '<br>');
+        }
+
+        function searchFAQ() {
+            filterFAQs();
+        }
+
+        function provideFeedback(isHelpful) {
+            const message = isHelpful ? 
+                "感谢您的反馈，我们会继续改进服务质量！" : 
+                "抱歉没能帮到您，您可以尝试联系在线客服获得更多帮助。";
+            alert(message);
+        }
+
+        // 搜索框实时搜索
+        document.getElementById('searchInput').addEventListener('input', function() {
+            if (this.value.length >= 2 || this.value === '') {
+                filterFAQs();
+            }
+        });
+
+        // 初始化FAQ列表
+        updateFAQList();
+    </script>
+</body>
+</html> 

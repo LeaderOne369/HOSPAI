@@ -3,6 +3,7 @@
 #include "SystemStatsWidget.h"
 #include "SystemConfigWidget.h"
 #include "AuditLogWidget.h"
+#include "StaffRatingWidget.h"
 #include <QMessageBox>
 #include <QApplication>
 #include <QDesktopServices>
@@ -14,6 +15,8 @@ AdminWindow::AdminWindow(QWidget *parent)
     , m_systemStatsWidget(nullptr)
     , m_systemConfigWidget(nullptr)
     , m_auditLogWidget(nullptr)
+    , m_staffRatingWidget(nullptr)
+    , m_dbManager(nullptr)
     , m_toolBar(nullptr)
     , m_actBackup(nullptr)
     , m_actMaintenance(nullptr)
@@ -41,6 +44,7 @@ void AdminWindow::setupFunctionWidgets()
     addFunctionWidget(m_systemStatsWidget, "数据统计");
     addFunctionWidget(m_systemConfigWidget, "系统设置");
     addFunctionWidget(m_auditLogWidget, "审计日志");
+    addFunctionWidget(m_staffRatingWidget, "评价管理");
     
     // 默认显示用户管理页面
     setCurrentWidget("用户管理");
@@ -52,6 +56,21 @@ void AdminWindow::createWidgets()
     m_systemStatsWidget = new SystemStatsWidget(this);
     m_systemConfigWidget = new SystemConfigWidget(this);
     m_auditLogWidget = new AuditLogWidget(this);
+    m_staffRatingWidget = new StaffRatingWidget(this);
+}
+
+void AdminWindow::setDatabaseManager(DatabaseManager* dbManager)
+{
+    m_dbManager = dbManager;
+    
+    // 设置各个组件的数据库管理器
+    if (m_userManageWidget) {
+        m_userManageWidget->setDatabaseManager(dbManager);
+    }
+    if (m_staffRatingWidget) {
+        m_staffRatingWidget->setDatabaseManager(dbManager);
+    }
+    // 其他组件也可以根据需要设置数据库管理器
 }
 
 void AdminWindow::setupToolBar()
@@ -116,6 +135,9 @@ void AdminWindow::onMenuItemClicked(MenuAction action)
         break;
     case MenuAction::AdminStats:
         setCurrentWidget("数据统计");
+        break;
+    case MenuAction::AdminRatingManage:
+        setCurrentWidget("评价管理");
         break;
     case MenuAction::AdminSystem:
         setCurrentWidget("系统设置");

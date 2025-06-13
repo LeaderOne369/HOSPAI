@@ -21,7 +21,8 @@ enum class MenuAction {
     // 管理员菜单
     AdminUserManage = 300,
     AdminStats = 301,
-    AdminSystem = 302
+    AdminSystem = 302,
+    AdminRatingManage = 303
 };
 
 #endif // USERROLE_H 

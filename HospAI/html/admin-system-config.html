@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HospAI - 管理系统设置</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+
+        /* 主容器 - 对应Qt的QVBoxLayout */
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+
+        /* 主布局 - 对应Qt的m_mainLayout (QVBoxLayout) */
+        .main-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* 标题 - 对应Qt的titleLabel */
+        .title-label {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        /* 按钮布局 - 对应Qt的m_buttonLayout (QHBoxLayout) */
+        .button-layout {
+            display: flex;
+            gap: 10px;
+        }
+
+        .button-layout button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+
+        .btn-save {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-save:hover {
+            background-color: #218838;
+        }
+
+        .btn-reset {
+            background-color: #ffc107;
+            color: #212529;
+        }
+
+        .btn-reset:hover {
+            background-color: #e0a800;
+        }
+
+        .btn-import, .btn-export {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn-import:hover, .btn-export:hover {
+            background-color: #545b62;
+        }
+
+        .stretch {
+            flex: 1;
+        }
+
+        /* 选项卡 - 对应Qt的QTabWidget */
+        .tab-widget {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .tab-header {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .tab-header button {
+            background: none;
+            border: none;
+            padding: 12px 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab-header button.active {
+            background: white;
+            border-bottom-color: #007bff;
+            color: #007bff;
+        }
+
+        .tab-header button:hover {
+            background: #e9ecef;
+        }
+
+        .tab-content {
+            padding: 20px;
+            min-height: 400px;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        /* GroupBox样式 - 对应Qt的QGroupBox */
+        .group-box {
+            border: 2px solid #E5E5EA;
+            border-radius: 8px;
+            margin-top: 10px;
+            margin-bottom: 15px;
+            position: relative;
+            padding: 15px;
+        }
+
+        .group-box-title {
+            position: absolute;
+            top: -10px;
+            left: 10px;
+            background: white;
+            padding: 0 10px;
+            font-weight: bold;
+            color: #2c3e50;
+            font-size: 14px;
+        }
+
+        /* 网格布局 - 对应Qt的QGridLayout */
+        .grid-layout {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 10px 15px;
+            align-items: center;
+        }
+
+        .grid-layout label {
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .grid-layout input,
+        .grid-layout select {
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .grid-layout input:focus,
+        .grid-layout select:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+
+        /* 垂直布局 - 对应Qt的QVBoxLayout */
+        .vertical-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* 水平布局 - 对应Qt的QHBoxLayout */
+        .horizontal-layout {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* AI配置滑块 */
+        .slider-container {
+            margin: 20px 0;
+        }
+
+        .slider-label {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #495057;
+        }
+
+        .slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #007bff;
+            cursor: pointer;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #007bff;
+            cursor: pointer;
+        }
+
+        /* 表格样式 - 对应Qt的QTableWidget */
+        .table-container {
+            margin-top: 15px;
+        }
+
+        .table-toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .table-toolbar button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-add {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-add:hover {
+            background-color: #218838;
+        }
+
+        .btn-edit {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-edit:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-delete {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background-color: #c82333;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .data-table th {
+            background-color: #f8f9fa;
+            padding: 12px;
+            text-align: left;
+            font-weight: bold;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        .data-table td {
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .data-table tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .stretch-last {
+            /* 对应Qt的horizontalHeader()->setStretchLastSection(true) */
+            width: auto;
+        }
+
+        .spinbox {
+            width: 100px;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- 主布局 - 对应Qt的m_mainLayout (QVBoxLayout) -->
+        <div class="main-layout">
+            <!-- 标题 - 对应Qt的titleLabel -->
+            <div class="title-label">系统设置</div>
+
+            <!-- 按钮布局 - 对应Qt的m_buttonLayout (QHBoxLayout) -->
+            <div class="button-layout">
+                <button class="btn-save" onclick="onSaveConfig()">💾 保存配置</button>
+                <button class="btn-reset" onclick="onResetConfig()">🔄 重置</button>
+                <button class="btn-import" onclick="onImportConfig()">📁 导入</button>
+                <button class="btn-export" onclick="onExportConfig()">📤 导出</button>
+                <div class="stretch"></div>
+            </div>
+
+            <!-- 选项卡 - 对应Qt的m_tabWidget (QTabWidget) -->
+            <div class="tab-widget">
+                <div class="tab-header">
+                    <button class="active" onclick="switchTab(0)">⚙️ 常规设置</button>
+                    <button onclick="switchTab(1)">🤖 AI配置</button>
+                    <button onclick="switchTab(2)">❓ FAQ管理</button>
+                    <button onclick="switchTab(3)">🏥 科室管理</button>
+                </div>
+
+                <div class="tab-content">
+                    <!-- 常规设置选项卡 - 对应Qt的m_generalTab -->
+                    <div class="tab-panel active" id="tab-0">
+                        <!-- 系统基本信息组 - 对应Qt的basicGroup (QGroupBox) -->
+                        <div class="group-box">
+                            <div class="group-box-title">系统基本信息</div>
+                            <!-- 网格布局 - 对应Qt的basicLayout (QGridLayout) -->
+                            <div class="grid-layout">
+                                <label>系统名称:</label>
+                                <input type="text" value="医院智慧客服系统" id="systemName">
+                                
+                                <label>系统版本:</label>
+                                <input type="text" value="1.0.0" id="systemVersion">
+                                
+                                <label>最大用户数:</label>
+                                <input type="number" class="spinbox" min="1" max="10000" value="1000" id="maxUsers">
+                                
+                                <label>会话超时(分钟):</label>
+                                <input type="number" class="spinbox" min="5" max="120" value="30" id="sessionTimeout">
+                            </div>
+                        </div>
+
+                        <!-- 系统选项组 - 对应Qt的optionGroup (QGroupBox) -->
+                        <div class="group-box">
+                            <div class="group-box-title">系统选项</div>
+                            <!-- 垂直布局 - 对应Qt的optionLayout (QVBoxLayout) -->
+                            <div class="vertical-layout">
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="enableLogging" checked>
+                                    <label for="enableLogging">启用系统日志</label>
+                                </div>
+                                
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="enableBackup" checked>
+                                    <label for="enableBackup">启用自动备份</label>
+                                </div>
+                                
+                                <!-- 日志级别布局 - 对应Qt的logLayout (QHBoxLayout) -->
+                                <div class="horizontal-layout">
+                                    <label>日志级别:</label>
+                                    <select id="logLevel">
+                                        <option>Debug</option>
+                                        <option selected>Info</option>
+                                        <option>Warning</option>
+                                        <option>Error</option>
+                                    </select>
+                                    <div class="stretch"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI配置选项卡 - 对应Qt的m_aiConfigTab -->
+                    <div class="tab-panel" id="tab-1">
+                        <!-- AI配置组 - 对应Qt的aiGroup (QGroupBox) -->
+                        <div class="group-box">
+                            <div class="group-box-title">AI智能配置</div>
+                            <!-- AI滑块 - 对应Qt的m_aiConfidence (QSlider) -->
+                            <div class="slider-container">
+                                <div class="slider-label" id="confidenceLabel">AI置信度阈值: 75%</div>
+                                <input type="range" class="slider" min="0" max="100" value="75" id="aiConfidence" oninput="updateConfidenceLabel(this.value)">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- FAQ管理选项卡 - 对应Qt的m_faqTab -->
+                    <div class="tab-panel" id="tab-2">
+                        <!-- 表格容器 -->
+                        <div class="table-container">
+                            <!-- 工具栏 - 对应Qt的toolLayout (QHBoxLayout) -->
+                            <div class="table-toolbar">
+                                <button class="btn-add" onclick="onAddFAQ()">➕ 添加FAQ</button>
+                                <button class="btn-edit" onclick="onEditFAQ()">✏️ 编辑</button>
+                                <button class="btn-delete" onclick="onDeleteFAQ()">🗑️ 删除</button>
+                                <div class="stretch"></div>
+                            </div>
+
+                            <!-- FAQ表格 - 对应Qt的m_faqTable (QTableWidget) -->
+                            <table class="data-table" id="faqTable">
+                                <thead>
+                                    <tr>
+                                        <th>问题</th>
+                                        <th>答案</th>
+                                        <th class="stretch-last">分类</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>如何挂号？</td>
+                                        <td>您可以通过网上预约或现场挂号</td>
+                                        <td>挂号</td>
+                                    </tr>
+                                    <tr>
+                                        <td>门诊时间是什么？</td>
+                                        <td>门诊时间：周一至周日 8:00-17:00</td>
+                                        <td>门诊</td>
+                                    </tr>
+                                    <tr>
+                                        <td>如何查看检查结果？</td>
+                                        <td>可通过手机APP或网站查询</td>
+                                        <td>检查</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 科室管理选项卡 - 对应Qt的m_departmentTab -->
+                    <div class="tab-panel" id="tab-3">
+                        <!-- 表格容器 -->
+                        <div class="table-container">
+                            <!-- 工具栏 - 对应Qt的toolLayout (QHBoxLayout) -->
+                            <div class="table-toolbar">
+                                <button class="btn-add" onclick="onAddDepartment()">➕ 添加科室</button>
+                                <button class="btn-edit" onclick="onEditDepartment()">✏️ 编辑</button>
+                                <button class="btn-delete" onclick="onDeleteDepartment()">🗑️ 删除</button>
+                                <div class="stretch"></div>
+                            </div>
+
+                            <!-- 科室表格 - 对应Qt的m_departmentTable (QTableWidget) -->
+                            <table class="data-table" id="departmentTable">
+                                <thead>
+                                    <tr>
+                                        <th>科室名称</th>
+                                        <th>位置</th>
+                                        <th>电话</th>
+                                        <th class="stretch-last">描述</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>内科</td>
+                                        <td>1楼东侧</td>
+                                        <td>010-12345678</td>
+                                        <td>内科疾病诊疗</td>
+                                    </tr>
+                                    <tr>
+                                        <td>外科</td>
+                                        <td>2楼西侧</td>
+                                        <td>010-87654321</td>
+                                        <td>外科手术治疗</td>
+                                    </tr>
+                                    <tr>
+                                        <td>儿科</td>
+                                        <td>3楼南侧</td>
+                                        <td>010-11223344</td>
+                                        <td>儿童疾病诊疗</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 选项卡切换 - 对应Qt的QTabWidget功能
+        function switchTab(index) {
+            // 移除所有活动状态
+            document.querySelectorAll('.tab-header button').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+            
+            // 激活选中的选项卡
+            document.querySelectorAll('.tab-header button')[index].classList.add('active');
+            document.getElementById(`tab-${index}`).classList.add('active');
+        }
+
+        // AI置信度滑块更新 - 对应Qt的滑块valueChanged信号
+        function updateConfidenceLabel(value) {
+            document.getElementById('confidenceLabel').textContent = `AI置信度阈值: ${value}%`;
+        }
+
+        // 按钮事件处理 - 对应Qt的按钮clicked信号
+        function onSaveConfig() {
+            alert('系统配置已保存！');
+        }
+
+        function onResetConfig() {
+            if (confirm('确定要重置所有配置到默认值吗？')) {
+                // 重置表单值
+                document.getElementById('systemName').value = '医院智慧客服系统';
+                document.getElementById('systemVersion').value = '1.0.0';
+                document.getElementById('maxUsers').value = 1000;
+                document.getElementById('sessionTimeout').value = 30;
+                document.getElementById('enableLogging').checked = true;
+                document.getElementById('enableBackup').checked = true;
+                document.getElementById('logLevel').value = 'Info';
+                document.getElementById('aiConfidence').value = 75;
+                updateConfidenceLabel(75);
+                alert('配置已重置到默认值！');
+            }
+        }
+
+        function onImportConfig() {
+            alert('配置导入功能将在后续版本中实现');
+        }
+
+        function onExportConfig() {
+            alert('配置导出功能将在后续版本中实现');
+        }
+
+        function onAddFAQ() {
+            alert('FAQ添加功能将在后续版本中实现');
+        }
+
+        function onEditFAQ() {
+            alert('FAQ编辑功能将在后续版本中实现');
+        }
+
+        function onDeleteFAQ() {
+            alert('FAQ删除功能将在后续版本中实现');
+        }
+
+        function onAddDepartment() {
+            alert('科室添加功能将在后续版本中实现');
+        }
+
+        function onEditDepartment() {
+            alert('科室编辑功能将在后续版本中实现');
+        }
+
+        function onDeleteDepartment() {
+            alert('科室删除功能将在后续版本中实现');
+        }
+    </script>
+</body>
+</html> 

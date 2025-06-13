@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HospAI - 客服聊天管理</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background-color: #f8f9fa;
+            padding: 10px;
+        }
+
+        /* 主容器 - 对应Qt的QSplitter */
+        .main-container {
+            display: flex;
+            height: 90vh;
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        /* 左侧面板 - 对应Qt的m_leftPanel */
+        .left-panel {
+            width: 350px;
+            flex-shrink: 0;
+            border-right: 1px solid #E5E5EA;
+            display: flex;
+            flex-direction: column;
+            background: #F8F9FA;
+        }
+
+        /* 工作台标题 */
+        .stats-label {
+            text-align: center;
+            padding: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #2c3e50;
+            border-bottom: 1px solid #E5E5EA;
+        }
+
+        /* 分组框样式 - 对应Qt的QGroupBox */
+        .group-box {
+            margin: 10px;
+            border: 2px solid #E5E5EA;
+            border-radius: 8px;
+            position: relative;
+            background: white;
+        }
+
+        .group-box-title {
+            position: absolute;
+            top: -10px;
+            left: 10px;
+            background: white;
+            padding: 0 10px;
+            font-weight: bold;
+            color: #2c3e50;
+            font-size: 14px;
+        }
+
+        /* 等待接入的会话 - 对应Qt的m_waitingSessionsGroup */
+        .waiting-sessions {
+            max-height: 150px;
+        }
+
+        .session-list {
+            max-height: 120px;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .session-item {
+            padding: 10px;
+            border-bottom: 1px solid #F1F3F4;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            border-radius: 6px;
+            margin-bottom: 5px;
+        }
+
+        .session-item:hover {
+            background-color: #F2F2F7;
+        }
+
+        .session-item.selected {
+            background-color: #007AFF;
+            color: white;
+        }
+
+        .session-item.waiting {
+            border-left: 4px solid #FF9500;
+            background-color: #FFF8F0;
+        }
+
+        .session-item.waiting:hover {
+            background-color: #FFEFD5;
+        }
+
+        .session-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .session-name {
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .session-time {
+            font-size: 11px;
+            color: #8E8E93;
+        }
+
+        .session-preview {
+            font-size: 12px;
+            color: #666;
+            margin-top: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* 进行中的会话 - 对应Qt的m_activeSessionsGroup */
+        .active-sessions {
+            flex: 1;
+        }
+
+        .active-sessions .session-list {
+            max-height: calc(100% - 30px);
+        }
+
+        /* 统计区域 */
+        .stats-widget {
+            padding: 10px;
+            border-top: 1px solid #E5E5EA;
+            background: white;
+            margin: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .rating-label {
+            font-size: 12px;
+            color: #5D6D7E;
+            margin-bottom: 8px;
+        }
+
+        .view-ratings-button {
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .view-ratings-button:hover {
+            background: #545b62;
+        }
+
+        /* 右侧面板 - 对应Qt的m_rightPanel */
+        .right-panel {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 聊天标题 */
+        .chat-title {
+            padding: 15px;
+            border-bottom: 1px solid #E5E5EA;
+            font-size: 16px;
+            font-weight: bold;
+            color: #2c3e50;
+            background: #F8F9FA;
+        }
+
+        /* 客户信息组 - 对应Qt的m_customerInfoGroup */
+        .customer-info {
+            padding: 10px 15px;
+            background: #F8F9FA;
+            border-bottom: 1px solid #E5E5EA;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .customer-detail {
+            display: inline-block;
+            margin-right: 20px;
+        }
+
+        /* 聊天消息区域 */
+        .message-scroll-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            background: white;
+        }
+
+        .message-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .message {
+            display: flex;
+            margin-bottom: 10px;
+        }
+
+        .message.customer {
+            justify-content: flex-start;
+        }
+
+        .message.staff {
+            justify-content: flex-end;
+        }
+
+        .message-bubble {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            font-size: 14px;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+
+        .message.customer .message-bubble {
+            background-color: #F2F2F7;
+            color: #1D1D1F;
+        }
+
+        .message.staff .message-bubble {
+            background-color: #007AFF;
+            color: white;
+        }
+
+        .message-time {
+            font-size: 11px;
+            color: #8E8E93;
+            margin-top: 4px;
+            text-align: center;
+        }
+
+        /* 快捷回复区域 */
+        .quick-reply-group {
+            border-top: 1px solid #E5E5EA;
+            padding: 10px 15px;
+            background: #F8F9FA;
+        }
+
+        .quick-reply-title {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .quick-reply-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .quick-reply-btn {
+            background: white;
+            border: 1px solid #D1D1D6;
+            border-radius: 15px;
+            padding: 6px 12px;
+            font-size: 12px;
+            color: #1D1D1F;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .quick-reply-btn:hover {
+            background: #E5E5EA;
+            border-color: #007AFF;
+        }
+
+        /* 富文本工具栏 */
+        .rich-text-toolbar {
+            background-color: #F2F2F7;
+            border: 1px solid #D1D1D6;
+            border-radius: 8px;
+            padding: 5px;
+            margin: 10px 15px;
+            display: none;
+            flex-wrap: wrap;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .rich-text-toolbar.visible {
+            display: flex;
+        }
+
+        /* 输入区域 */
+        .input-area {
+            border-top: 1px solid #E5E5EA;
+            padding: 15px;
+            background: white;
+        }
+
+        .input-layout {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .message-input {
+            flex: 1;
+            border: 2px solid #E5E5EA;
+            border-radius: 20px;
+            padding: 10px 15px;
+            font-size: 14px;
+            resize: none;
+            min-height: 40px;
+            max-height: 120px;
+            line-height: 1.4;
+        }
+
+        .message-input:focus {
+            outline: none;
+            border-color: #007AFF;
+        }
+
+        .input-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .input-button {
+            background-color: #007AFF;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .input-button:hover:not(:disabled) {
+            background-color: #0056CC;
+        }
+
+        .input-button:disabled {
+            background-color: #C7C7CC;
+            cursor: not-allowed;
+        }
+
+        .input-button.danger {
+            background-color: #FF3B30;
+        }
+
+        .input-button.danger:hover {
+            background-color: #E5292F;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #666;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- 左侧面板 - 对应Qt的m_leftPanel -->
+        <div class="left-panel">
+            <!-- 统计标题 -->
+            <div class="stats-label">客服工作台</div>
+
+            <!-- 等待接入的会话 - 对应Qt的m_waitingSessionsGroup -->
+            <div class="group-box waiting-sessions">
+                <div class="group-box-title">等待接入</div>
+                <div class="session-list" id="waitingSessionsList">
+                    <div class="session-item waiting" onclick="acceptSession(1)">
+                        <div class="session-info">
+                            <div class="session-name">患者张先生</div>
+                            <div class="session-time">2分钟前</div>
+                        </div>
+                        <div class="session-preview">您好，我想咨询挂号相关问题...</div>
+                    </div>
+                    <div class="session-item waiting" onclick="acceptSession(2)">
+                        <div class="session-info">
+                            <div class="session-name">患者李女士</div>
+                            <div class="session-time">5分钟前</div>
+                        </div>
+                        <div class="session-preview">请问医院的营业时间是什么时候？</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 进行中的会话 - 对应Qt的m_activeSessionsGroup -->
+            <div class="group-box active-sessions">
+                <div class="group-box-title">进行中的对话</div>
+                <div class="session-list" id="activeSessionsList">
+                    <div class="session-item" onclick="selectSession(3)">
+                        <div class="session-info">
+                            <div class="session-name">患者王先生</div>
+                            <div class="session-time">进行中</div>
+                        </div>
+                        <div class="session-preview">好的，谢谢您的解答...</div>
+                    </div>
+                    <div class="session-item" onclick="selectSession(4)">
+                        <div class="session-info">
+                            <div class="session-name">患者陈女士</div>
+                            <div class="session-time">进行中</div>
+                        </div>
+                        <div class="session-preview">那我需要带什么证件呢？</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 个人统计和评价区域 -->
+            <div class="stats-widget">
+                <div class="rating-label" id="ratingLabel">服务评价: ⭐⭐⭐⭐⭐ 4.8分</div>
+                <button class="view-ratings-button" onclick="showMyRatings()">查看评价详情</button>
+            </div>
+        </div>
+
+        <!-- 右侧面板 - 对应Qt的m_rightPanel -->
+        <div class="right-panel">
+            <!-- 聊天标题 -->
+            <div class="chat-title" id="chatTitleLabel">请选择一个对话</div>
+
+            <!-- 客户信息组 -->
+            <div class="customer-info" id="customerInfo" style="display: none;">
+                <span class="customer-detail">客户：<span id="customerName">-</span></span>
+                <span class="customer-detail">电话：<span id="customerPhone">-</span></span>
+                <span class="customer-detail">状态：<span id="customerStatus">-</span></span>
+                <span class="customer-detail">会话时间：<span id="sessionTime">-</span></span>
+            </div>
+
+            <!-- 聊天消息区域 -->
+            <div class="message-scroll-area" id="messageScrollArea">
+                <div class="empty-state" id="emptyState">
+                    <div class="empty-state-icon">💬</div>
+                    <div>请从左侧选择一个对话开始</div>
+                </div>
+                <div class="message-container" id="messageContainer" style="display: none;">
+                    <!-- 消息将通过JavaScript动态添加 -->
+                </div>
+            </div>
+
+            <!-- 快捷回复区域 -->
+            <div class="quick-reply-group" id="quickReplyGroup" style="display: none;">
+                <div class="quick-reply-title">快捷回复：</div>
+                <div class="quick-reply-buttons">
+                    <button class="quick-reply-btn" onclick="sendQuickReply('您好，很高兴为您服务！')">问候语</button>
+                    <button class="quick-reply-btn" onclick="sendQuickReply('我院门诊时间是周一至周日8:00-17:00')">营业时间</button>
+                    <button class="quick-reply-btn" onclick="sendQuickReply('请您稍等，我帮您查询一下...')">查询中</button>
+                    <button class="quick-reply-btn" onclick="sendQuickReply('还有其他需要帮助的吗？')">询问需求</button>
+                    <button class="quick-reply-btn" onclick="sendQuickReply('感谢您的咨询，祝您身体健康！')">结束语</button>
+                </div>
+            </div>
+
+            <!-- 富文本工具栏 -->
+            <div class="rich-text-toolbar" id="richTextToolbar">
+                <!-- 富文本工具栏内容 -->
+            </div>
+
+            <!-- 输入区域 -->
+            <div class="input-area" id="inputArea" style="display: none;">
+                <div class="input-layout">
+                    <textarea class="message-input" id="messageInput" placeholder="请输入回复内容..." rows="1" onkeypress="handleKeyPress(event)" oninput="autoResize(this)"></textarea>
+                    <div class="input-buttons">
+                        <button class="input-button" onclick="toggleRichMode()" id="richModeBtn">富文本</button>
+                        <button class="input-button" onclick="sendMessage()">发送</button>
+                        <button class="input-button danger" onclick="closeSession()" id="closeSessionBtn">结束会话</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSessionId = null;
+        let isRichMode = false;
+        let sessions = {
+            1: { name: '患者张先生', phone: '138****1234', status: '等待接入', messages: [] },
+            2: { name: '患者李女士', phone: '139****5678', status: '等待接入', messages: [] },
+            3: { 
+                name: '患者王先生', 
+                phone: '135****9012', 
+                status: '进行中', 
+                startTime: '14:25',
+                messages: [
+                    { type: 'customer', content: '您好，我想咨询一下挂号的问题', time: '14:26' },
+                    { type: 'staff', content: '您好！很高兴为您服务。请问您需要挂哪个科室的号呢？', time: '14:26' },
+                    { type: 'customer', content: '我想挂内科的号', time: '14:27' },
+                    { type: 'staff', content: '好的，内科可以通过微信公众号、官方APP或现场挂号。您比较倾向哪种方式？', time: '14:27' },
+                    { type: 'customer', content: '微信公众号怎么操作？', time: '14:28' },
+                    { type: 'staff', content: '您搜索关注"市人民医院"公众号，点击"就医服务"-"预约挂号"，选择科室和医生即可。', time: '14:28' },
+                    { type: 'customer', content: '好的，谢谢您的解答...', time: '14:29' }
+                ]
+            },
+            4: { 
+                name: '患者陈女士', 
+                phone: '136****3456', 
+                status: '进行中', 
+                startTime: '14:20',
+                messages: [
+                    { type: 'customer', content: '初次就诊需要办理什么手续？', time: '14:21' },
+                    { type: 'staff', content: '初次就诊需要：1.带身份证 2.办理就诊卡 3.如有医保带医保卡 4.到科室取号', time: '14:21' },
+                    { type: 'customer', content: '那我需要带什么证件呢？', time: '14:22' }
+                ]
+            }
+        };
+
+        function acceptSession(sessionId) {
+            // 移到进行中列表
+            const session = sessions[sessionId];
+            session.status = '进行中';
+            session.startTime = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+            
+            // 更新界面
+            updateSessionLists();
+            selectSession(sessionId);
+            
+            // 添加系统消息
+            if (!session.messages) session.messages = [];
+            session.messages.push({
+                type: 'system',
+                content: '客服已接入会话',
+                time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+            });
+        }
+
+        function selectSession(sessionId) {
+            currentSessionId = sessionId;
+            const session = sessions[sessionId];
+            
+            // 更新选中状态
+            document.querySelectorAll('.session-item').forEach(item => item.classList.remove('selected'));
+            document.querySelector(`[onclick*="${sessionId}"]`).classList.add('selected');
+            
+            // 更新标题和客户信息
+            document.getElementById('chatTitleLabel').textContent = `与 ${session.name} 的对话`;
+            document.getElementById('customerName').textContent = session.name;
+            document.getElementById('customerPhone').textContent = session.phone;
+            document.getElementById('customerStatus').textContent = session.status;
+            document.getElementById('sessionTime').textContent = session.startTime || '-';
+            
+            // 显示聊天界面
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('customerInfo').style.display = 'block';
+            document.getElementById('messageContainer').style.display = 'block';
+            document.getElementById('quickReplyGroup').style.display = 'block';
+            document.getElementById('inputArea').style.display = 'block';
+            
+            // 加载消息历史
+            loadMessages(sessionId);
+        }
+
+        function loadMessages(sessionId) {
+            const messageContainer = document.getElementById('messageContainer');
+            messageContainer.innerHTML = '';
+            
+            const messages = sessions[sessionId].messages || [];
+            messages.forEach(message => {
+                addMessageToUI(message.content, message.type, message.time);
+            });
+            
+            scrollToBottom();
+        }
+
+        function addMessageToUI(content, type, time) {
+            const messageContainer = document.getElementById('messageContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            if (type === 'system') {
+                messageDiv.innerHTML = `
+                    <div style="width: 100%; text-align: center;">
+                        <div style="background: #FF9500; color: white; border-radius: 12px; padding: 6px 12px; display: inline-block; font-size: 12px;">
+                            ${content}
+                        </div>
+                    </div>
+                `;
+            } else {
+                messageDiv.innerHTML = `
+                    <div>
+                        <div class="message-bubble">${content}</div>
+                        <div class="message-time">${time}</div>
+                    </div>
+                `;
+            }
+            
+            messageContainer.appendChild(messageDiv);
+        }
+
+        function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
+            
+            if (message && currentSessionId) {
+                const time = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+                
+                // 添加到会话记录
+                sessions[currentSessionId].messages.push({
+                    type: 'staff',
+                    content: message,
+                    time: time
+                });
+                
+                // 添加到界面
+                addMessageToUI(message, 'staff', time);
+                
+                // 清空输入框
+                messageInput.value = '';
+                messageInput.style.height = 'auto';
+                
+                scrollToBottom();
+            }
+        }
+
+        function sendQuickReply(message) {
+            if (currentSessionId) {
+                const time = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+                
+                sessions[currentSessionId].messages.push({
+                    type: 'staff',
+                    content: message,
+                    time: time
+                });
+                
+                addMessageToUI(message, 'staff', time);
+                scrollToBottom();
+            }
+        }
+
+        function closeSession() {
+            if (currentSessionId && confirm('确定要结束这个会话吗？')) {
+                delete sessions[currentSessionId];
+                currentSessionId = null;
+                
+                // 重置界面
+                document.getElementById('emptyState').style.display = 'flex';
+                document.getElementById('customerInfo').style.display = 'none';
+                document.getElementById('messageContainer').style.display = 'none';
+                document.getElementById('quickReplyGroup').style.display = 'none';
+                document.getElementById('inputArea').style.display = 'none';
+                document.getElementById('chatTitleLabel').textContent = '请选择一个对话';
+                
+                updateSessionLists();
+            }
+        }
+
+        function updateSessionLists() {
+            const waitingList = document.getElementById('waitingSessionsList');
+            const activeList = document.getElementById('activeSessionsList');
+            
+            waitingList.innerHTML = '';
+            activeList.innerHTML = '';
+            
+            Object.entries(sessions).forEach(([id, session]) => {
+                const sessionDiv = document.createElement('div');
+                sessionDiv.className = 'session-item';
+                sessionDiv.innerHTML = `
+                    <div class="session-info">
+                        <div class="session-name">${session.name}</div>
+                        <div class="session-time">${session.status === '等待接入' ? '等待中' : '进行中'}</div>
+                    </div>
+                    <div class="session-preview">${session.messages.length > 0 ? session.messages[session.messages.length - 1].content : '新会话'}</div>
+                `;
+                
+                if (session.status === '等待接入') {
+                    sessionDiv.classList.add('waiting');
+                    sessionDiv.onclick = () => acceptSession(parseInt(id));
+                    waitingList.appendChild(sessionDiv);
+                } else {
+                    sessionDiv.onclick = () => selectSession(parseInt(id));
+                    activeList.appendChild(sessionDiv);
+                }
+            });
+        }
+
+        function toggleRichMode() {
+            isRichMode = !isRichMode;
+            const richToolbar = document.getElementById('richTextToolbar');
+            const richModeBtn = document.getElementById('richModeBtn');
+            
+            if (isRichMode) {
+                richToolbar.classList.add('visible');
+                richModeBtn.style.backgroundColor = '#007AFF';
+            } else {
+                richToolbar.classList.remove('visible');
+                richModeBtn.style.backgroundColor = '';
+            }
+        }
+
+        function showMyRatings() {
+            alert('评价详情：\n\n⭐⭐⭐⭐⭐ 5星：45%\n⭐⭐⭐⭐ 4星：35%\n⭐⭐⭐ 3星：15%\n⭐⭐ 2星：4%\n⭐ 1星：1%\n\n综合评分：4.8分\n总评价数：126条');
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function autoResize(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+        }
+
+        function scrollToBottom() {
+            const scrollArea = document.getElementById('messageScrollArea');
+            scrollArea.scrollTop = scrollArea.scrollHeight;
+        }
+
+        // 初始化界面
+        updateSessionLists();
+    </script>
+</body>
+</html> 

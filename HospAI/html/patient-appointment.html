@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HospAI - 患者预约挂号</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+
+        /* 主容器 - 对应Qt的主窗口 */
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+
+        /* 主布局 - 对应Qt的m_mainLayout (QVBoxLayout) */
+        .main-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* 网格布局 - 对应Qt的gridLayout (QGridLayout 2x2) */
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto auto;
+            gap: 20px;
+        }
+
+        /* GroupBox样式 - 对应Qt的QGroupBox */
+        .group-box {
+            border: 2px solid #E5E5EA;
+            border-radius: 8px;
+            margin-top: 10px;
+            padding: 15px;
+            padding-top: 25px;
+            position: relative;
+        }
+
+        .group-box-title {
+            position: absolute;
+            top: -10px;
+            left: 10px;
+            background: white;
+            padding: 0 10px;
+            font-weight: bold;
+            color: #2c3e50;
+            font-size: 14px;
+        }
+
+        /* 科室选择 - 对应Qt的m_departmentGroup (位置0,0) */
+        .department-group {
+            grid-column: 1;
+            grid-row: 1;
+        }
+
+        .department-combo {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #CED4DA;
+            border-radius: 6px;
+            background-color: white;
+            font-size: 14px;
+        }
+
+        .department-combo:focus {
+            outline: none;
+            border-color: #007AFF;
+            box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.25);
+        }
+
+        /* 医生选择 - 对应Qt的m_doctorGroup (位置0,1) */
+        .doctor-group {
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        .doctor-list {
+            width: 100%;
+            max-height: 200px;
+            border: 1px solid #CED4DA;
+            border-radius: 6px;
+            background-color: white;
+            overflow-y: auto;
+        }
+
+        .doctor-item {
+            padding: 8px;
+            border-bottom: 1px solid #F1F3F4;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .doctor-item:last-child {
+            border-bottom: none;
+        }
+
+        .doctor-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .doctor-item.selected {
+            background-color: #007AFF;
+            color: white;
+        }
+
+        /* 日期选择 - 对应Qt的m_dateGroup (位置1,0) */
+        .date-group {
+            grid-column: 1;
+            grid-row: 2;
+        }
+
+        .calendar-widget {
+            width: 100%;
+            border: 1px solid #CED4DA;
+            border-radius: 6px;
+            background-color: white;
+            font-size: 14px;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .calendar-nav {
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+
+        .calendar-nav:hover {
+            background-color: #e9ecef;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background-color: #dee2e6;
+            padding: 1px;
+        }
+
+        .calendar-day-header {
+            background-color: #f8f9fa;
+            padding: 8px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .calendar-day {
+            background-color: white;
+            padding: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            min-height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .calendar-day:hover {
+            background-color: #e3f2fd;
+        }
+
+        .calendar-day.selected {
+            background-color: #007AFF;
+            color: white;
+        }
+
+        .calendar-day.disabled {
+            color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .calendar-day.disabled:hover {
+            background-color: white;
+        }
+
+        /* 时间选择 - 对应Qt的m_timeGroup (位置1,1) */
+        .time-group {
+            grid-column: 2;
+            grid-row: 2;
+        }
+
+        .time-list {
+            width: 100%;
+            max-height: 200px;
+            border: 1px solid #CED4DA;
+            border-radius: 6px;
+            background-color: white;
+            overflow-y: auto;
+        }
+
+        .time-item {
+            padding: 8px;
+            border-bottom: 1px solid #F1F3F4;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .time-item:last-child {
+            border-bottom: none;
+        }
+
+        .time-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .time-item.selected {
+            background-color: #007AFF;
+            color: white;
+        }
+
+        .time-item.unavailable {
+            color: #999;
+            cursor: not-allowed;
+            text-decoration: line-through;
+        }
+
+        .time-item.unavailable:hover {
+            background-color: white;
+        }
+
+        /* 预约信息 - 对应Qt的m_infoGroup */
+        .info-group {
+            margin-top: 20px;
+        }
+
+        .appointment-info {
+            color: #6D6D70;
+            padding: 10px;
+            word-wrap: break-word;
+            margin-bottom: 15px;
+            min-height: 50px;
+        }
+
+        /* 确认按钮 - 对应Qt的m_confirmButton */
+        .confirm-button {
+            width: 100%;
+            background-color: #34C759;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 15px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .confirm-button:hover {
+            background-color: #30B24A;
+        }
+
+        .confirm-button:disabled {
+            background-color: #C7C7CC;
+            cursor: not-allowed;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .grid-layout {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto auto auto;
+            }
+
+            .department-group {
+                grid-column: 1;
+                grid-row: 1;
+            }
+
+            .doctor-group {
+                grid-column: 1;
+                grid-row: 2;
+            }
+
+            .date-group {
+                grid-column: 1;
+                grid-row: 3;
+            }
+
+            .time-group {
+                grid-column: 1;
+                grid-row: 4;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- 主布局 - 对应Qt的m_mainLayout (QVBoxLayout) -->
+        <div class="main-layout">
+            <!-- 网格布局 - 对应Qt的gridLayout (QGridLayout 2x2) -->
+            <div class="grid-layout">
+                <!-- 科室选择 - 对应Qt的m_departmentGroup (位置0,0) -->
+                <div class="group-box department-group">
+                    <div class="group-box-title">选择科室</div>
+                    <select class="department-combo" id="departmentCombo" onchange="onDepartmentChanged()">
+                        <option value="">请选择科室</option>
+                        <option value="内科">内科</option>
+                        <option value="外科">外科</option>
+                        <option value="妇产科">妇产科</option>
+                        <option value="儿科">儿科</option>
+                        <option value="骨科">骨科</option>
+                        <option value="心血管科">心血管科</option>
+                        <option value="呼吸科">呼吸科</option>
+                        <option value="消化科">消化科</option>
+                        <option value="神经科">神经科</option>
+                        <option value="皮肤科">皮肤科</option>
+                    </select>
+                </div>
+
+                <!-- 医生选择 - 对应Qt的m_doctorGroup (位置0,1) -->
+                <div class="group-box doctor-group">
+                    <div class="group-box-title">选择医生</div>
+                    <div class="doctor-list" id="doctorList">
+                        <div class="doctor-item" style="text-align: center; color: #999; font-style: italic;">
+                            请先选择科室
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 日期选择 - 对应Qt的m_dateGroup (位置1,0) -->
+                <div class="group-box date-group">
+                    <div class="group-box-title">选择日期</div>
+                    <div class="calendar-widget">
+                        <div class="calendar-header">
+                            <button class="calendar-nav" onclick="previousMonth()">&lt;</button>
+                            <span id="currentMonth"></span>
+                            <button class="calendar-nav" onclick="nextMonth()">&gt;</button>
+                        </div>
+                        <div class="calendar-grid">
+                            <div class="calendar-day-header">日</div>
+                            <div class="calendar-day-header">一</div>
+                            <div class="calendar-day-header">二</div>
+                            <div class="calendar-day-header">三</div>
+                            <div class="calendar-day-header">四</div>
+                            <div class="calendar-day-header">五</div>
+                            <div class="calendar-day-header">六</div>
+                            <!-- 日期将通过JavaScript动态生成 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 时间选择 - 对应Qt的m_timeGroup (位置1,1) -->
+                <div class="group-box time-group">
+                    <div class="group-box-title">选择时间</div>
+                    <div class="time-list" id="timeList">
+                        <div class="time-item" style="text-align: center; color: #999; font-style: italic;">
+                            请先选择日期
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 预约信息 - 对应Qt的m_infoGroup -->
+            <div class="group-box info-group">
+                <div class="group-box-title">预约信息</div>
+                <div class="appointment-info" id="appointmentInfo">
+                    请完成上述选择...
+                </div>
+                <button class="confirm-button" id="confirmButton" disabled onclick="makeAppointment()">
+                    确认预约
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentDate = new Date();
+        let selectedDepartment = '';
+        let selectedDoctor = '';
+        let selectedDate = null;
+        let selectedTime = '';
+
+        // 初始化日历
+        function initCalendar() {
+            updateCalendarHeader();
+            generateCalendarDays();
+        }
+
+        function updateCalendarHeader() {
+            const monthNames = ['一月', '二月', '三月', '四月', '五月', '六月', 
+                              '七月', '八月', '九月', '十月', '十一月', '十二月'];
+            document.getElementById('currentMonth').textContent = 
+                `${currentDate.getFullYear()}年 ${monthNames[currentDate.getMonth()]}`;
+        }
+
+        function generateCalendarDays() {
+            const grid = document.querySelector('.calendar-grid');
+            // 清除除标题外的所有日期
+            const days = grid.querySelectorAll('.calendar-day');
+            days.forEach(day => day.remove());
+
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const startDate = new Date(firstDay);
+            startDate.setDate(startDate.getDate() - firstDay.getDay());
+
+            const today = new Date();
+            const maxDate = new Date(today);
+            maxDate.setDate(maxDate.getDate() + 30);
+
+            for (let i = 0; i < 42; i++) {
+                const cellDate = new Date(startDate);
+                cellDate.setDate(startDate.getDate() + i);
+
+                const dayElement = document.createElement('div');
+                dayElement.className = 'calendar-day';
+                dayElement.textContent = cellDate.getDate();
+
+                if (cellDate.getMonth() !== month || cellDate < today || cellDate > maxDate) {
+                    dayElement.classList.add('disabled');
+                } else {
+                    dayElement.onclick = () => onDateSelected(cellDate);
+                }
+
+                grid.appendChild(dayElement);
+            }
+        }
+
+        function previousMonth() {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            updateCalendarHeader();
+            generateCalendarDays();
+        }
+
+        function nextMonth() {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            updateCalendarHeader();
+            generateCalendarDays();
+        }
+
+        function onDepartmentChanged() {
+            const combo = document.getElementById('departmentCombo');
+            selectedDepartment = combo.value;
+            loadDoctors();
+            updateAppointmentInfo();
+        }
+
+        function loadDoctors() {
+            const doctorList = document.getElementById('doctorList');
+            doctorList.innerHTML = '';
+
+            if (!selectedDepartment) {
+                doctorList.innerHTML = '<div class="doctor-item" style="text-align: center; color: #999; font-style: italic;">请先选择科室</div>';
+                return;
+            }
+
+            let doctors = [];
+            switch (selectedDepartment) {
+                case '内科':
+                    doctors = ['张主任 - 主任医师', '李医生 - 副主任医师', '王医生 - 主治医师'];
+                    break;
+                case '外科':
+                    doctors = ['赵主任 - 主任医师', '孙医生 - 副主任医师', '周医生 - 主治医师'];
+                    break;
+                default:
+                    doctors = ['医生A - 主任医师', '医生B - 副主任医师', '医生C - 主治医师'];
+            }
+
+            doctors.forEach(doctor => {
+                const item = document.createElement('div');
+                item.className = 'doctor-item';
+                item.textContent = doctor;
+                item.onclick = () => onDoctorSelected(doctor);
+                doctorList.appendChild(item);
+            });
+        }
+
+        function onDoctorSelected(doctor) {
+            // 清除之前的选择
+            document.querySelectorAll('.doctor-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            
+            // 选择当前医生
+            event.target.classList.add('selected');
+            selectedDoctor = doctor;
+            updateAppointmentInfo();
+        }
+
+        function onDateSelected(date) {
+            // 清除之前的选择
+            document.querySelectorAll('.calendar-day').forEach(day => {
+                day.classList.remove('selected');
+            });
+            
+            // 选择当前日期
+            event.target.classList.add('selected');
+            selectedDate = date;
+            loadTimeSlots();
+            updateAppointmentInfo();
+        }
+
+        function loadTimeSlots() {
+            const timeList = document.getElementById('timeList');
+            timeList.innerHTML = '';
+
+            if (!selectedDate) {
+                timeList.innerHTML = '<div class="time-item" style="text-align: center; color: #999; font-style: italic;">请先选择日期</div>';
+                return;
+            }
+
+            const morningSlots = [
+                '08:00-08:30', '08:30-09:00', '09:00-09:30', '09:30-10:00',
+                '10:00-10:30', '10:30-11:00', '11:00-11:30', '11:30-12:00'
+            ];
+
+            const afternoonSlots = [
+                '14:00-14:30', '14:30-15:00', '15:00-15:30', '15:30-16:00',
+                '16:00-16:30', '16:30-17:00', '17:00-17:30', '17:30-18:00'
+            ];
+
+            const allSlots = [...morningSlots, ...afternoonSlots];
+
+            allSlots.forEach(slot => {
+                const item = document.createElement('div');
+                item.className = 'time-item';
+                
+                // 随机设置一些时段为已预约
+                if (Math.random() < 0.25) {
+                    item.textContent = slot + ' (已预约)';
+                    item.classList.add('unavailable');
+                } else {
+                    item.textContent = slot;
+                    item.onclick = () => onTimeSlotSelected(slot);
+                }
+                
+                timeList.appendChild(item);
+            });
+        }
+
+        function onTimeSlotSelected(time) {
+            // 清除之前的选择
+            document.querySelectorAll('.time-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            
+            // 选择当前时间
+            event.target.classList.add('selected');
+            selectedTime = time;
+            updateAppointmentInfo();
+        }
+
+        function updateAppointmentInfo() {
+            const infoElement = document.getElementById('appointmentInfo');
+            const confirmButton = document.getElementById('confirmButton');
+
+            if (selectedDepartment && selectedDoctor && selectedDate && selectedTime) {
+                const dateStr = selectedDate.toLocaleDateString('zh-CN');
+                infoElement.innerHTML = `
+                    <strong>预约详情：</strong><br>
+                    科室：${selectedDepartment}<br>
+                    医生：${selectedDoctor}<br>
+                    日期：${dateStr}<br>
+                    时间：${selectedTime}
+                `;
+                confirmButton.disabled = false;
+            } else {
+                infoElement.textContent = '请完成上述选择...';
+                confirmButton.disabled = true;
+            }
+        }
+
+        function makeAppointment() {
+            if (selectedDepartment && selectedDoctor && selectedDate && selectedTime) {
+                const dateStr = selectedDate.toLocaleDateString('zh-CN');
+                alert(`预约成功！\n\n科室：${selectedDepartment}\n医生：${selectedDoctor}\n日期：${dateStr}\n时间：${selectedTime}\n\n请按时就诊，如需取消请提前联系医院。`);
+                
+                // 重置表单
+                document.getElementById('departmentCombo').value = '';
+                selectedDepartment = '';
+                selectedDoctor = '';
+                selectedDate = null;
+                selectedTime = '';
+                document.getElementById('doctorList').innerHTML = '<div class="doctor-item" style="text-align: center; color: #999; font-style: italic;">请先选择科室</div>';
+                document.getElementById('timeList').innerHTML = '<div class="time-item" style="text-align: center; color: #999; font-style: italic;">请先选择日期</div>';
+                document.querySelectorAll('.selected').forEach(item => item.classList.remove('selected'));
+                updateAppointmentInfo();
+            }
+        }
+
+        // 页面加载时初始化日历
+        window.onload = function() {
+            initCalendar();
+        };
+    </script>
+</body>
+</html> 

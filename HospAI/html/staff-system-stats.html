@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HospAI - 数据统计</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background-color: #f4f6f9;
+        }
+        .header {
+            background-color: #fff;
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .header .menu {
+            display: flex;
+            gap: 20px;
+        }
+        .header .menu button {
+            background-color: #3b82f6;
+            color: #fff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .header .menu button:hover {
+            background-color: #2563eb;
+        }
+        .filters {
+            background-color: #fff;
+            padding: 20px;
+            display: flex;
+            gap: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            margin-top: 20px;
+        }
+        .filters input[type="date"] {
+            padding: 10px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            width: 150px;
+        }
+        .filters button {
+            padding: 10px 20px;
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .filters button:hover {
+            background-color: #2563eb;
+        }
+        .statistics {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px;
+        }
+        .stat-box {
+            background-color: #fff;
+            padding: 20px;
+            width: 23%;
+            text-align: center;
+            border-radius: 6px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .stat-box h3 {
+            margin-bottom: 10px;
+            font-size: 18px;
+            color: #333;
+        }
+        .stat-box p {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .stat-box img {
+            width: 50px;
+            margin-bottom: 10px;
+        }
+        .system-resources {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px;
+        }
+        .resource-box {
+            background-color: #fff;
+            padding: 20px;
+            width: 48%;
+            border-radius: 6px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .resource-box h3 {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        .progress-bar {
+            background-color: #e0e0e0;
+            border-radius: 6px;
+            height: 12px;
+            margin-bottom: 15px;
+        }
+        .progress-bar span {
+            display: block;
+            height: 100%;
+            border-radius: 6px;
+        }
+        .footer {
+            background-color: #fff;
+            padding: 20px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+        }
+        .footer .user-info {
+            font-size: 14px;
+            color: #333;
+        }
+        .footer .version {
+            font-size: 12px;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Section -->
+    <div class="header">
+        <h1>HospAI 医院智能客服系统</h1>
+        <div class="menu">
+            <button>用户管理</button>
+            <button>系统统计</button>
+            <button>系统配置</button>
+            <button>审计日志</button>
+        </div>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="filters">
+        <div>
+            <label for="start-date">开始日期:</label>
+            <input type="date" id="start-date" value="2025-06-05">
+        </div>
+        <div>
+            <label for="end-date">结束日期:</label>
+            <input type="date" id="end-date" value="2025-06-12">
+        </div>
+        <div>
+            <button>刷新</button>
+        </div>
+    </div>
+
+    <!-- Statistics Section -->
+    <div class="statistics">
+        <div class="stat-box">
+            <img src="https://img.icons8.com/ios/50/000000/users.png" alt="Total Users">
+            <h3>总用户数</h3>
+            <p>1,247</p>
+        </div>
+        <div class="stat-box">
+            <img src="https://img.icons8.com/ios/50/000000/checkmark.png" alt="Active Users">
+            <h3>活跃用户</h3>
+            <p>892</p>
+        </div>
+        <div class="stat-box">
+            <img src="https://img.icons8.com/ios/50/000000/comments.png" alt="Total Interactions">
+            <h3>总对话数</h3>
+            <p>5,431</p>
+        </div>
+        <div class="stat-box">
+            <img src="https://img.icons8.com/ios/50/000000/lightning-bolt.png" alt="Average Response Time">
+            <h3>平均响应时间</h3>
+            <p>2.3秒</p>
+        </div>
+    </div>
+
+    <!-- System Resources Section -->
+    <div class="system-resources">
+        <div class="resource-box">
+            <h3>CPU 使用率</h3>
+            <div class="progress-bar">
+                <span style="width: 68%; background-color: #34D399;"></span>
+            </div>
+            <p>68%</p>
+        </div>
+        <div class="resource-box">
+            <h3>内存使用率</h3>
+            <div class="progress-bar">
+                <span style="width: 54%; background-color: #34D399;"></span>
+            </div>
+            <p>54%</p>
+        </div>
+    </div>
+
+    <!-- Footer Section -->
+    <div class="footer">
+        <div class="user-info">当前用户: 管理员 | 角色: 管理员</div>
+        <div class="version">HospAI v1.0.0</div>
+    </div>
+
+</body>
+</html>

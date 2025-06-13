@@ -6,6 +6,7 @@
 #include <QTextStream>
 #include <QDateTime>
 #include <QFrame>
+#include <QTimer>
 
 UserManageWidget::UserManageWidget(QWidget *parent)
     : QWidget(parent)
@@ -23,9 +24,16 @@ UserManageWidget::UserManageWidget(QWidget *parent)
     , m_btnSearch(nullptr)
     , m_userTable(nullptr)
     , m_statsLabel(nullptr)
+    , m_dbManager(nullptr)
 {
     setupUI();
-    loadUsers();
+}
+
+void UserManageWidget::setDatabaseManager(DatabaseManager* dbManager)
+{
+    m_dbManager = dbManager;
+    // 延迟加载数据，确保界面完全初始化后再执行
+    QTimer::singleShot(0, this, &UserManageWidget::loadUsers);
 }
 
 void UserManageWidget::setupUI()
@@ -167,33 +175,37 @@ void UserManageWidget::setupUI()
 
 void UserManageWidget::loadUsers()
 {
+    if (!m_dbManager) return;
+    
     // 清空表格
     m_userTable->setRowCount(0);
     
-    // 添加示例数据
-    QStringList sampleUsers = {
-        "P001|张三|患者|活跃|2024-01-15 14:30",
-        "P002|李四|患者|活跃|2024-01-15 13:45",
-        "S001|王护士|客服|活跃|2024-01-15 15:20",
-        "S002|赵客服|客服|活跃|2024-01-15 12:10",
-        "A001|陈主任|管理员|活跃|2024-01-15 16:00",
-        "P003|刘老师|患者|禁用|2024-01-10 09:30"
-    };
+    // 获取所有用户数据
+    QList<UserInfo> users = m_dbManager->getAllUsers();
     
-    m_userTable->setRowCount(sampleUsers.size());
+    m_userTable->setRowCount(users.size());
     
-    for (int i = 0; i < sampleUsers.size(); ++i) {
-        QStringList parts = sampleUsers[i].split("|");
-        if (parts.size() >= 5) {
-            addUserToTable(i, parts[0], parts[1], parts[2], parts[3], parts[4]);
-        }
+    int activeCount = 0;
+    for (int i = 0; i < users.size(); ++i) {
+        const UserInfo& user = users[i];
+        QString roleName = user.role;  // 直接使用字符串role
+        
+        QString status = (user.status == 1) ? "活跃" : "禁用";
+        if (user.status == 1) activeCount++;
+        
+        QString lastLogin = user.lastLogin.isValid() ? 
+            user.lastLogin.toString("yyyy-MM-dd hh:mm") : "从未登录";
+        
+        QString displayName = user.realName.isEmpty() ? user.username : user.realName;
+        QString userIdStr = QString("U%1").arg(user.id, 4, 10, QChar('0'));  // 生成用户ID字符串
+        
+        addUserToTable(i, userIdStr, displayName, roleName, status, lastLogin);
     }
     
     // 更新统计信息
-    int totalUsers = sampleUsers.size();
-    int activeUsers = 5; // 示例数据
+    int totalUsers = users.size();
     m_statsLabel->setText(QString("总用户数: %1 | 活跃用户: %2 | 禁用用户: %3")
-                         .arg(totalUsers).arg(activeUsers).arg(totalUsers - activeUsers));
+                         .arg(totalUsers).arg(activeCount).arg(totalUsers - activeCount));
 }
 
 void UserManageWidget::addUserToTable(int row, const QString& id, const QString& name, 

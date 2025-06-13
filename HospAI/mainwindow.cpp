@@ -131,6 +131,9 @@ void MainWindow::setCurrentUser(const UserInfo& user)
     AdminMainWidget* adminWidget = qobject_cast<AdminMainWidget*>(m_centralStack->widget(0));
     if (adminWidget) {
         adminWidget->setCurrentUser(user);
+        if (m_dbManager) {
+            adminWidget->setDatabaseManager(m_dbManager);
+        }
     }
     
     StaffMainWidget* staffWidget = qobject_cast<StaffMainWidget*>(m_centralStack->widget(1));
@@ -154,16 +157,21 @@ void MainWindow::setDatabaseManager(DatabaseManager* dbManager)
 {
     m_dbManager = dbManager;
     
-    // 如果已经设置了用户和数据库管理器，传递给患者界面
+    // 如果已经设置了用户和数据库管理器，传递给各个界面
     if (m_dbManager && !m_currentUser.username.isEmpty()) {
-        PatientMainWidget* patientWidget = qobject_cast<PatientMainWidget*>(m_centralStack->widget(2));
-        if (patientWidget) {
-            patientWidget->setDatabaseManager(m_dbManager);
+        AdminMainWidget* adminWidget = qobject_cast<AdminMainWidget*>(m_centralStack->widget(0));
+        if (adminWidget) {
+            adminWidget->setDatabaseManager(m_dbManager);
         }
         
         StaffMainWidget* staffWidget = qobject_cast<StaffMainWidget*>(m_centralStack->widget(1));
         if (staffWidget) {
             staffWidget->setDatabaseManager(m_dbManager);
+        }
+        
+        PatientMainWidget* patientWidget = qobject_cast<PatientMainWidget*>(m_centralStack->widget(2));
+        if (patientWidget) {
+            patientWidget->setDatabaseManager(m_dbManager);
         }
     }
 }

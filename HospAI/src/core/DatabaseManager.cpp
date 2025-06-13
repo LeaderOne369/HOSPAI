@@ -138,6 +138,67 @@ bool DatabaseManager::createTables()
     // 在用户表中添加在线状态字段（如果不存在）
     query.exec("ALTER TABLE users ADD COLUMN is_online INTEGER DEFAULT 0");
     
+    // 创建会话评价表
+    QString createRatingsTable = R"(
+        CREATE TABLE IF NOT EXISTS session_ratings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id INTEGER NOT NULL,
+            patient_id INTEGER NOT NULL,
+            staff_id INTEGER,
+            rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+            comment TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (session_id) REFERENCES chat_sessions(id),
+            FOREIGN KEY (patient_id) REFERENCES users(id),
+            FOREIGN KEY (staff_id) REFERENCES users(id)
+        )
+    )";
+    
+    if (!query.exec(createRatingsTable)) {
+        qDebug() << "创建会话评价表失败:" << query.lastError().text();
+    }
+    
+    // 创建快捷回复表
+    QString createQuickRepliesTable = R"(
+        CREATE TABLE IF NOT EXISTS quick_replies (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title VARCHAR(100) NOT NULL,
+            content TEXT NOT NULL,
+            category VARCHAR(50) DEFAULT '其他',
+            sort_order INTEGER DEFAULT 0,
+            is_active INTEGER DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    )";
+    
+    if (!query.exec(createQuickRepliesTable)) {
+        qDebug() << "创建快捷回复表失败:" << query.lastError().text();
+    } else {
+        // 插入一些默认的快捷回复数据
+        if (!query.exec("SELECT COUNT(*) FROM quick_replies") || !query.next() || query.value(0).toInt() == 0) {
+            // 插入默认快捷回复
+            QStringList defaultReplies = {
+                "INSERT INTO quick_replies (title, content, category, sort_order) VALUES ('问候语', '您好，我是客服，有什么可以帮助您的吗？', '问候语', 1)",
+                "INSERT INTO quick_replies (title, content, category, sort_order) VALUES ('等待回复', '请稍等，我来为您查询一下', '常见问题', 2)",
+                "INSERT INTO quick_replies (title, content, category, sort_order) VALUES ('感谢等待', '感谢您的耐心等待', '常见问题', 3)",
+                "INSERT INTO quick_replies (title, content, category, sort_order) VALUES ('问题记录', '您的问题我已经记录，会尽快处理', '常见问题', 4)",
+                "INSERT INTO quick_replies (title, content, category, sort_order) VALUES ('联系方式', '如还有其他问题，随时联系我们', '结束语', 5)",
+                "INSERT INTO quick_replies (title, content, category, sort_order) VALUES ('祝福语', '祝您身体健康！', '结束语', 6)"
+            };
+            
+            for (const QString& sql : defaultReplies) {
+                query.exec(sql);
+            }
+        }
+    }
+    
+    // 扩展会话表字段
+    query.exec("ALTER TABLE chat_sessions ADD COLUMN end_reason VARCHAR(50)");
+    query.exec("ALTER TABLE chat_sessions ADD COLUMN ended_by INTEGER");
+    query.exec("ALTER TABLE chat_sessions ADD COLUMN ended_at DATETIME");
+    query.exec("ALTER TABLE chat_sessions ADD COLUMN duration INTEGER DEFAULT 0");
+    
     // 创建默认管理员账户（如果不存在）
     if (!isUsernameExists("admin")) {
         registerUser("admin", "admin123", "admin@hospai.com", "", "管理员", "系统管理员");
@@ -229,6 +290,128 @@ bool DatabaseManager::loginUser(const QString& username, const QString& password
         updateLastLogin(userInfo.id);
         
         return true;
+    }
+    
+    return false;
+}
+
+// ========== 会话评价管理 ==========
+
+bool DatabaseManager::addSessionRating(int sessionId, int patientId, int staffId, int rating, const QString& comment)
+{
+    // 检查是否已经评价过
+    if (hasSessionRating(sessionId)) {
+        qDebug() << "会话已经被评价过:" << sessionId;
+        return false;
+    }
+    
+    QSqlQuery query(m_database);
+    query.prepare(R"(
+        INSERT INTO session_ratings (session_id, patient_id, staff_id, rating, comment)
+        VALUES (?, ?, ?, ?, ?)
+    )");
+    
+    query.addBindValue(sessionId);
+    query.addBindValue(patientId);
+    query.addBindValue(staffId);
+    query.addBindValue(rating);
+    query.addBindValue(comment);
+    
+    if (query.exec()) {
+        qDebug() << "会话评价保存成功:" << sessionId << "评分:" << rating;
+        return true;
+    } else {
+        qDebug() << "会话评价保存失败:" << query.lastError().text();
+        return false;
+    }
+}
+
+SessionRating DatabaseManager::getSessionRating(int sessionId)
+{
+    SessionRating rating;
+    
+    QSqlQuery query(m_database);
+    query.prepare(R"(
+        SELECT id, session_id, patient_id, staff_id, rating, comment, created_at
+        FROM session_ratings 
+        WHERE session_id = ?
+    )");
+    
+    query.addBindValue(sessionId);
+    
+    if (query.exec() && query.next()) {
+        rating.id = query.value("id").toInt();
+        rating.sessionId = query.value("session_id").toInt();
+        rating.patientId = QString::number(query.value("patient_id").toInt());
+        rating.staffId = QString::number(query.value("staff_id").toInt());
+        rating.rating = query.value("rating").toInt();
+        rating.comment = query.value("comment").toString();
+        rating.createdAt = query.value("created_at").toDateTime();
+        rating.ratingTime = rating.createdAt;
+    }
+    
+    return rating;
+}
+
+QList<SessionRating> DatabaseManager::getStaffRatings(int staffId)
+{
+    QList<SessionRating> ratings;
+    
+    QSqlQuery query(m_database);
+    query.prepare(R"(
+        SELECT id, session_id, patient_id, staff_id, rating, comment, created_at
+        FROM session_ratings 
+        WHERE staff_id = ?
+        ORDER BY created_at DESC
+    )");
+    
+    query.addBindValue(staffId);
+    
+    if (query.exec()) {
+        while (query.next()) {
+            SessionRating rating;
+            rating.id = query.value("id").toInt();
+            rating.sessionId = query.value("session_id").toInt();
+            rating.patientId = query.value("patient_id").toString();
+            rating.staffId = query.value("staff_id").toString();
+            rating.rating = query.value("rating").toInt();
+            rating.comment = query.value("comment").toString();
+            rating.createdAt = query.value("created_at").toDateTime();
+            rating.ratingTime = rating.createdAt;
+            
+            ratings.append(rating);
+        }
+    }
+    
+    return ratings;
+}
+
+double DatabaseManager::getStaffAverageRating(int staffId)
+{
+    QSqlQuery query(m_database);
+    query.prepare(R"(
+        SELECT AVG(CAST(rating AS REAL)) as avg_rating
+        FROM session_ratings 
+        WHERE staff_id = ?
+    )");
+    
+    query.addBindValue(staffId);
+    
+    if (query.exec() && query.next()) {
+        return query.value("avg_rating").toDouble();
+    }
+    
+    return 0.0;
+}
+
+bool DatabaseManager::hasSessionRating(int sessionId)
+{
+    QSqlQuery query(m_database);
+    query.prepare("SELECT COUNT(*) FROM session_ratings WHERE session_id = ?");
+    query.addBindValue(sessionId);
+    
+    if (query.exec() && query.next()) {
+        return query.value(0).toInt() > 0;
     }
     
     return false;
@@ -715,6 +898,12 @@ QList<UserInfo> DatabaseManager::getAllUsers()
             user.status = query.value("status").toInt();
             user.avatarPath = query.value("avatar_path").toString();
             
+            // 设置新增字段
+            user.userId = QString("U%1").arg(user.id, 4, 10, QChar('0'));
+            user.name = user.realName.isEmpty() ? user.username : user.realName;
+            user.lastLoginTime = user.lastLogin;
+            user.isActive = (user.status == 1);
+            
             users.append(user);
         }
     }
@@ -750,6 +939,12 @@ QList<UserInfo> DatabaseManager::getUsersByRole(const QString& role)
             user.lastLogin = query.value("last_login").toDateTime();
             user.status = query.value("status").toInt();
             user.avatarPath = query.value("avatar_path").toString();
+            
+            // 设置新增字段
+            user.userId = QString("U%1").arg(user.id, 4, 10, QChar('0'));
+            user.name = user.realName.isEmpty() ? user.username : user.realName;
+            user.lastLoginTime = user.lastLogin;
+            user.isActive = (user.status == 1);
             
             users.append(user);
         }
@@ -820,6 +1015,12 @@ UserInfo DatabaseManager::getUserInfo(int userId)
         userInfo.lastLogin = query.value("last_login").toDateTime();
         userInfo.status = query.value("status").toInt();
         userInfo.avatarPath = query.value("avatar_path").toString();
+        
+        // 设置新增字段
+        userInfo.userId = QString("U%1").arg(userInfo.id, 4, 10, QChar('0'));
+        userInfo.name = userInfo.realName.isEmpty() ? userInfo.username : userInfo.realName;
+        userInfo.lastLoginTime = userInfo.lastLogin;
+        userInfo.isActive = (userInfo.status == 1);
     }
     
     return userInfo;
@@ -865,4 +1066,187 @@ bool DatabaseManager::changePassword(int userId, const QString& oldPassword, con
     query.addBindValue(userId);
     
     return query.exec();
+}
+
+// ========== 快捷回复管理 ==========
+
+QList<QuickReply> DatabaseManager::getAllQuickReplies()
+{
+    QList<QuickReply> replies;
+    
+    QSqlQuery query(m_database);
+    query.prepare(R"(
+        SELECT id, title, content, category, sort_order, is_active, created_at, updated_at
+        FROM quick_replies
+        ORDER BY sort_order ASC, created_at ASC
+    )");
+    
+    if (query.exec()) {
+        while (query.next()) {
+            QuickReply reply;
+            reply.id = query.value("id").toInt();
+            reply.title = query.value("title").toString();
+            reply.content = query.value("content").toString();
+            reply.category = query.value("category").toString();
+            reply.sortOrder = query.value("sort_order").toInt();
+            reply.isActive = query.value("is_active").toBool();
+            reply.createdAt = query.value("created_at").toDateTime();
+            reply.updatedAt = query.value("updated_at").toDateTime();
+            
+            replies.append(reply);
+        }
+    }
+    
+    return replies;
+}
+
+QList<QuickReply> DatabaseManager::getQuickRepliesByCategory(const QString& category)
+{
+    QList<QuickReply> replies;
+    
+    QSqlQuery query(m_database);
+    query.prepare(R"(
+        SELECT id, title, content, category, sort_order, is_active, created_at, updated_at
+        FROM quick_replies
+        WHERE category = ? AND is_active = 1
+        ORDER BY sort_order ASC, created_at ASC
+    )");
+    
+    query.addBindValue(category);
+    
+    if (query.exec()) {
+        while (query.next()) {
+            QuickReply reply;
+            reply.id = query.value("id").toInt();
+            reply.title = query.value("title").toString();
+            reply.content = query.value("content").toString();
+            reply.category = query.value("category").toString();
+            reply.sortOrder = query.value("sort_order").toInt();
+            reply.isActive = query.value("is_active").toBool();
+            reply.createdAt = query.value("created_at").toDateTime();
+            reply.updatedAt = query.value("updated_at").toDateTime();
+            
+            replies.append(reply);
+        }
+    }
+    
+    return replies;
+}
+
+QList<QuickReply> DatabaseManager::getActiveQuickReplies()
+{
+    QList<QuickReply> replies;
+    
+    QSqlQuery query(m_database);
+    query.prepare(R"(
+        SELECT id, title, content, category, sort_order, is_active, created_at, updated_at
+        FROM quick_replies
+        WHERE is_active = 1
+        ORDER BY sort_order ASC, created_at ASC
+    )");
+    
+    if (query.exec()) {
+        while (query.next()) {
+            QuickReply reply;
+            reply.id = query.value("id").toInt();
+            reply.title = query.value("title").toString();
+            reply.content = query.value("content").toString();
+            reply.category = query.value("category").toString();
+            reply.sortOrder = query.value("sort_order").toInt();
+            reply.isActive = query.value("is_active").toBool();
+            reply.createdAt = query.value("created_at").toDateTime();
+            reply.updatedAt = query.value("updated_at").toDateTime();
+            
+            replies.append(reply);
+        }
+    }
+    
+    return replies;
+}
+
+bool DatabaseManager::addQuickReply(const QString& title, const QString& content, const QString& category, int sortOrder)
+{
+    QSqlQuery query(m_database);
+    query.prepare(R"(
+        INSERT INTO quick_replies (title, content, category, sort_order, updated_at)
+        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+    )");
+    
+    query.addBindValue(title);
+    query.addBindValue(content);
+    query.addBindValue(category);
+    query.addBindValue(sortOrder);
+    
+    return query.exec();
+}
+
+bool DatabaseManager::updateQuickReply(int id, const QString& title, const QString& content, const QString& category, int sortOrder)
+{
+    QSqlQuery query(m_database);
+    query.prepare(R"(
+        UPDATE quick_replies 
+        SET title = ?, content = ?, category = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    )");
+    
+    query.addBindValue(title);
+    query.addBindValue(content);
+    query.addBindValue(category);
+    query.addBindValue(sortOrder);
+    query.addBindValue(id);
+    
+    return query.exec();
+}
+
+bool DatabaseManager::deleteQuickReply(int id)
+{
+    QSqlQuery query(m_database);
+    query.prepare("DELETE FROM quick_replies WHERE id = ?");
+    query.addBindValue(id);
+    
+    return query.exec();
+}
+
+bool DatabaseManager::toggleQuickReplyStatus(int id)
+{
+    QSqlQuery query(m_database);
+    query.prepare(R"(
+        UPDATE quick_replies 
+        SET is_active = 1 - is_active, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    )");
+    
+    query.addBindValue(id);
+    
+    return query.exec();
+}
+
+QList<SessionRating> DatabaseManager::getAllSessionRatings()
+{
+    QList<SessionRating> ratings;
+    
+    QSqlQuery query(m_database);
+    query.prepare(R"(
+        SELECT id, session_id, patient_id, staff_id, rating, comment, created_at
+        FROM session_ratings 
+        ORDER BY created_at DESC
+    )");
+    
+    if (query.exec()) {
+        while (query.next()) {
+            SessionRating rating;
+            rating.id = query.value("id").toInt();
+            rating.sessionId = query.value("session_id").toInt();
+            rating.patientId = QString::number(query.value("patient_id").toInt());
+            rating.staffId = QString::number(query.value("staff_id").toInt());
+            rating.rating = query.value("rating").toInt();
+            rating.comment = query.value("comment").toString();
+            rating.createdAt = query.value("created_at").toDateTime();
+            rating.ratingTime = rating.createdAt;
+            
+            ratings.append(rating);
+        }
+    }
+    
+    return ratings;
 } 

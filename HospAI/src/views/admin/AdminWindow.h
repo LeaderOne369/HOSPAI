@@ -2,6 +2,7 @@
 #define ADMINWINDOW_H
 
 #include "../common/BaseWindow.h"
+#include "../../core/DatabaseManager.h"
 #include <QToolBar>
 #include <QAction>
 
@@ -9,6 +10,7 @@ class UserManageWidget;
 class SystemStatsWidget;
 class SystemConfigWidget;
 class AuditLogWidget;
+class StaffRatingWidget;
 
 class AdminWindow : public BaseWindow
 {
@@ -17,6 +19,8 @@ class AdminWindow : public BaseWindow
 public:
     explicit AdminWindow(QWidget *parent = nullptr);
     ~AdminWindow();
+    
+    void setDatabaseManager(DatabaseManager* dbManager);
 
 protected:
     void setupMenu() override;
@@ -40,6 +44,10 @@ private:
     SystemStatsWidget* m_systemStatsWidget;
     SystemConfigWidget* m_systemConfigWidget;
     AuditLogWidget* m_auditLogWidget;
+    StaffRatingWidget* m_staffRatingWidget;
+    
+    // 数据库管理器
+    DatabaseManager* m_dbManager;
     
     // 工具栏
     QToolBar* m_toolBar;

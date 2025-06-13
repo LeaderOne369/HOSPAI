@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户管理 - HospAI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .page-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .btn:disabled {
+            background-color: #e9ecef;
+            color: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .separator {
+            width: 2px;
+            height: 30px;
+            background-color: #dee2e6;
+            margin: 0 10px;
+        }
+
+        .search-section {
+            background: white;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .search-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 15px;
+        }
+
+        .search-form {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .search-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .search-group label {
+            font-size: 14px;
+            color: #495057;
+            white-space: nowrap;
+        }
+
+        .search-input {
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #80bdff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+
+        .table-container {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th {
+            background-color: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+            padding: 12px 8px;
+            font-weight: bold;
+            color: #495057;
+            text-align: left;
+        }
+
+        .data-table td {
+            padding: 12px 8px;
+            border-bottom: 1px solid #f1f3f4;
+        }
+
+        .data-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        .data-table tr:hover {
+            background-color: #e3f2fd;
+        }
+
+        .data-table tr.selected {
+            background-color: #2196f3 !important;
+            color: white;
+        }
+
+        .status-active {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .status-inactive {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .action-btn {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+
+        .action-edit {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .action-delete {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .stats {
+            font-size: 14px;
+            color: #6c757d;
+            margin-top: 15px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-header {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 5px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .close-btn {
+            position: absolute;
+            right: 15px;
+            top: 15px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #aaa;
+        }
+
+        .close-btn:hover {
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="page-title">用户管理</h1>
+        
+        <!-- 工具栏 -->
+        <div class="toolbar">
+            <button class="btn btn-success" onclick="showAddUserModal()">
+                ➕ 添加用户
+            </button>
+            <button class="btn btn-primary" id="editBtn" disabled onclick="editSelectedUser()">
+                ✏️ 编辑用户
+            </button>
+            <button class="btn btn-danger" id="deleteBtn" disabled onclick="deleteSelectedUser()">
+                🗑️ 删除用户
+            </button>
+            
+            <div class="separator"></div>
+            
+            <button class="btn btn-secondary" onclick="refreshUsers()">
+                🔄 刷新
+            </button>
+            <button class="btn btn-secondary" onclick="exportUsers()">
+                📄 导出
+            </button>
+        </div>
+        
+        <!-- 搜索筛选区域 -->
+        <div class="search-section">
+            <div class="search-title">搜索筛选</div>
+            <div class="search-form">
+                <div class="search-group">
+                    <label>姓名:</label>
+                    <input type="text" class="search-input" id="nameSearch" placeholder="输入用户姓名...">
+                </div>
+                <div class="search-group">
+                    <label>角色:</label>
+                    <select class="search-input" id="roleFilter">
+                        <option value="">全部</option>
+                        <option value="患者">患者</option>
+                        <option value="客服">客服</option>
+                        <option value="管理员">管理员</option>
+                    </select>
+                </div>
+                <div class="search-group">
+                    <label>状态:</label>
+                    <select class="search-input" id="statusFilter">
+                        <option value="">全部</option>
+                        <option value="活跃">活跃</option>
+                        <option value="禁用">禁用</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" onclick="searchUsers()">
+                    🔍 搜索
+                </button>
+            </div>
+        </div>
+        
+        <!-- 用户表格 -->
+        <div class="table-container">
+            <table class="data-table" id="userTable">
+                <thead>
+                    <tr>
+                        <th>用户ID</th>
+                        <th>姓名</th>
+                        <th>角色</th>
+                        <th>状态</th>
+                        <th>最后登录</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- 表格数据将通过JavaScript动态填充 -->
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- 统计信息 -->
+        <div class="stats" id="statsInfo">
+            总用户数: 0, 活跃用户: 0, 禁用用户: 0
+        </div>
+    </div>
+
+    <!-- 添加/编辑用户模态框 -->
+    <div class="modal" id="userModal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <div class="modal-header" id="modalTitle">添加用户</div>
+            
+            <form id="userForm">
+                <div class="form-group">
+                    <label for="modalUsername">用户名:</label>
+                    <input type="text" id="modalUsername" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="modalRealName">真实姓名:</label>
+                    <input type="text" id="modalRealName" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="modalRole">角色:</label>
+                    <select id="modalRole" required>
+                        <option value="患者">患者</option>
+                        <option value="客服">客服</option>
+                        <option value="管理员">管理员</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="modalEmail">邮箱:</label>
+                    <input type="email" id="modalEmail" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="modalPhone">手机号:</label>
+                    <input type="tel" id="modalPhone">
+                </div>
+                
+                <div class="form-group">
+                    <label for="modalStatus">状态:</label>
+                    <select id="modalStatus">
+                        <option value="活跃">活跃</option>
+                        <option value="禁用">禁用</option>
+                    </select>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let users = [
+            { id: 'U0001', name: '张三', role: '患者', status: '活跃', lastLogin: '2024-01-15 14:30' },
+            { id: 'U0002', name: '李四', role: '客服', status: '活跃', lastLogin: '2024-01-15 13:20' },
+            { id: 'U0003', name: '王五', role: '管理员', status: '活跃', lastLogin: '2024-01-15 12:10' },
+            { id: 'U0004', name: '赵六', role: '患者', status: '禁用', lastLogin: '2024-01-10 09:30' },
+            { id: 'U0005', name: '孙七', role: '客服', status: '活跃', lastLogin: '2024-01-15 11:45' }
+        ];
+
+        let selectedUserId = null;
+        let isEditMode = false;
+
+        function loadUsers() {
+            const tbody = document.querySelector('#userTable tbody');
+            tbody.innerHTML = '';
+
+            users.forEach(user => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${user.id}</td>
+                    <td>${user.name}</td>
+                    <td>${user.role}</td>
+                    <td class="${user.status === '活跃' ? 'status-active' : 'status-inactive'}">${user.status}</td>
+                    <td>${user.lastLogin}</td>
+                    <td>
+                        <button class="action-btn action-edit" onclick="editUser('${user.id}')">编辑</button>
+                        <button class="action-btn action-delete" onclick="deleteUser('${user.id}')">删除</button>
+                    </td>
+                `;
+                
+                row.addEventListener('click', () => selectUser(user.id, row));
+                tbody.appendChild(row);
+            });
+
+            updateStats();
+        }
+
+        function selectUser(userId, row) {
+            // 移除之前的选中状态
+            document.querySelectorAll('#userTable tr').forEach(r => r.classList.remove('selected'));
+            
+            // 选中当前行
+            row.classList.add('selected');
+            selectedUserId = userId;
+            
+            // 启用编辑和删除按钮
+            document.getElementById('editBtn').disabled = false;
+            document.getElementById('deleteBtn').disabled = false;
+        }
+
+        function updateStats() {
+            const totalUsers = users.length;
+            const activeUsers = users.filter(u => u.status === '活跃').length;
+            const inactiveUsers = users.filter(u => u.status === '禁用').length;
+            
+            document.getElementById('statsInfo').textContent = 
+                `总用户数: ${totalUsers}, 活跃用户: ${activeUsers}, 禁用用户: ${inactiveUsers}`;
+        }
+
+        function showAddUserModal() {
+            isEditMode = false;
+            document.getElementById('modalTitle').textContent = '添加用户';
+            document.getElementById('userForm').reset();
+            document.getElementById('userModal').style.display = 'block';
+        }
+
+        function editUser(userId) {
+            const user = users.find(u => u.id === userId);
+            if (!user) return;
+
+            isEditMode = true;
+            document.getElementById('modalTitle').textContent = '编辑用户';
+            document.getElementById('modalUsername').value = user.name;
+            document.getElementById('modalRealName').value = user.name;
+            document.getElementById('modalRole').value = user.role;
+            document.getElementById('modalEmail').value = user.email || '';
+            document.getElementById('modalPhone').value = user.phone || '';
+            document.getElementById('modalStatus').value = user.status;
+            document.getElementById('userModal').style.display = 'block';
+        }
+
+        function editSelectedUser() {
+            if (selectedUserId) {
+                editUser(selectedUserId);
+            }
+        }
+
+        function deleteUser(userId) {
+            if (confirm('确定要删除这个用户吗？')) {
+                users = users.filter(u => u.id !== userId);
+                loadUsers();
+                selectedUserId = null;
+                document.getElementById('editBtn').disabled = true;
+                document.getElementById('deleteBtn').disabled = true;
+            }
+        }
+
+        function deleteSelectedUser() {
+            if (selectedUserId) {
+                deleteUser(selectedUserId);
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('userModal').style.display = 'none';
+        }
+
+        function refreshUsers() {
+            loadUsers();
+        }
+
+        function exportUsers() {
+            alert('导出功能演示：将用户数据导出为Excel文件');
+        }
+
+        function searchUsers() {
+            const nameSearch = document.getElementById('nameSearch').value.toLowerCase();
+            const roleFilter = document.getElementById('roleFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+
+            // 这里可以实现实际的搜索逻辑
+            alert(`搜索条件：姓名包含"${nameSearch}", 角色="${roleFilter}", 状态="${statusFilter}"`);
+        }
+
+        // 表单提交处理
+        document.getElementById('userForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                username: document.getElementById('modalUsername').value,
+                realName: document.getElementById('modalRealName').value,
+                role: document.getElementById('modalRole').value,
+                email: document.getElementById('modalEmail').value,
+                phone: document.getElementById('modalPhone').value,
+                status: document.getElementById('modalStatus').value
+            };
+
+            if (isEditMode) {
+                // 更新用户
+                const user = users.find(u => u.id === selectedUserId);
+                if (user) {
+                    user.name = formData.realName;
+                    user.role = formData.role;
+                    user.status = formData.status;
+                    user.email = formData.email;
+                    user.phone = formData.phone;
+                }
+            } else {
+                // 添加新用户
+                const newUser = {
+                    id: 'U' + String(users.length + 1).padStart(4, '0'),
+                    name: formData.realName,
+                    role: formData.role,
+                    status: formData.status,
+                    lastLogin: '从未登录',
+                    email: formData.email,
+                    phone: formData.phone
+                };
+                users.push(newUser);
+            }
+
+            loadUsers();
+            closeModal();
+        });
+
+        // 点击模态框外部关闭
+        window.addEventListener('click', function(event) {
+            const modal = document.getElementById('userModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        });
+
+        // 初始化页面
+        loadUsers();
+    </script>
+</body>
+</html> 

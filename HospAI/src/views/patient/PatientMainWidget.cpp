@@ -29,7 +29,9 @@ void PatientMainWidget::setDatabaseManager(DatabaseManager* dbManager)
         m_chatWidget->setDatabaseManager(dbManager);
     }
     if (m_realChatWidget) {
-        // m_realChatWidget->setDatabaseManager(dbManager); // TODO: 实现此方法
+        // RealChatWidget使用单例模式的DatabaseManager::instance()，无需手动设置
+        // 但我们可以通知它数据库已经初始化完成
+        qDebug() << "PatientMainWidget: 数据库管理器已设置";
     }
 }
 

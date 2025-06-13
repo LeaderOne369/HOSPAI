@@ -14,6 +14,7 @@
 #include <QCheckBox>
 #include <QDialog>
 #include "../../core/UserRole.h"
+#include "../../core/DatabaseManager.h"
 
 class UserManageWidget : public QWidget
 {
@@ -21,6 +22,7 @@ class UserManageWidget : public QWidget
 
 public:
     explicit UserManageWidget(QWidget *parent = nullptr);
+    void setDatabaseManager(DatabaseManager* dbManager);
 
 private slots:
     void onAddUser();
@@ -61,6 +63,9 @@ private:
     
     // 统计信息
     QLabel* m_statsLabel;
+    
+    // 数据库管理器
+    DatabaseManager* m_dbManager;
 };
 
 // 用户编辑对话框

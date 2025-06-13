@@ -27,6 +27,7 @@ set(PROJECT_SOURCES
         # Patient view components
         src/views/patient/ChatWidget.cpp
         src/views/patient/RealChatWidget.cpp
+        src/views/patient/SessionRatingDialog.cpp
         src/views/patient/FAQWidget.cpp
         src/views/patient/AppointmentWidget.cpp
         src/views/patient/PatientMainWidget.cpp
@@ -40,6 +41,9 @@ set(PROJECT_SOURCES
         
         # Admin view components
         src/views/admin/UserManageWidget.cpp
+        src/views/admin/PatientManageWidget.cpp
+        src/views/admin/QuickReplyManageWidget.cpp
+        src/views/admin/StaffRatingWidget.cpp
         src/views/admin/SystemStatsWidget.cpp
         src/views/admin/SystemConfigWidget.cpp
         src/views/admin/AuditLogWidget.cpp

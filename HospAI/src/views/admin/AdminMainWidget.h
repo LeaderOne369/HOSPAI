@@ -6,6 +6,9 @@
 #include <QHBoxLayout>
 #include <QTabWidget>
 #include "UserManageWidget.h"
+#include "PatientManageWidget.h"
+#include "QuickReplyManageWidget.h"
+#include "StaffRatingWidget.h"
 #include "SystemStatsWidget.h"
 #include "SystemConfigWidget.h"
 #include "AuditLogWidget.h"
@@ -19,6 +22,7 @@ public:
     explicit AdminMainWidget(QWidget *parent = nullptr);
     
     void setCurrentUser(const UserInfo& user);
+    void setDatabaseManager(DatabaseManager* dbManager);
 
 private:
     void setupUI();
@@ -31,7 +35,12 @@ private:
     SystemConfigWidget* m_systemConfigWidget;
     AuditLogWidget* m_auditLogWidget;
     
+    PatientManageWidget* m_patientManageWidget;
+    QuickReplyManageWidget* m_quickReplyManageWidget;
+    StaffRatingWidget* m_staffRatingWidget;
+    
     UserInfo m_currentUser;
+    DatabaseManager* m_dbManager;
 };
 
 #endif // ADMINMAINWIDGET_H 

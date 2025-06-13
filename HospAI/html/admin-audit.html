@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HospAI - 管理员审计日志</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background-color: #f4f6f9;
+        }
+        .header {
+            background-color: #fff;
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .header .menu {
+            display: flex;
+            gap: 20px;
+        }
+        .header .menu button {
+            background-color: #3b82f6;
+            color: #fff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .header .menu button:hover {
+            background-color: #2563eb;
+        }
+        .filters {
+            background-color: #fff;
+            padding: 20px;
+            display: flex;
+            gap: 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .filters select, .filters input {
+            padding: 10px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+        .filters input[type="date"] {
+            width: 150px;
+        }
+        .table-container {
+            background-color: #fff;
+            padding: 20px;
+            margin: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 6px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        th {
+            background-color: #f9fafb;
+            font-weight: bold;
+        }
+        .footer {
+            background-color: #fff;
+            padding: 20px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+        }
+        .footer .user-info {
+            font-size: 14px;
+            color: #333;
+        }
+        .footer .version {
+            font-size: 12px;
+            color: #777;
+        }
+        .table-actions {
+            display: flex;
+            justify-content: flex-start;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .table-actions button {
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            padding: 8px 15px;
+            font-size: 14px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .table-actions button:hover {
+            background-color: #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Section -->
+    <div class="header">
+        <h1>HospAI 管理员系统</h1>
+        <div class="menu">
+            <button>用户管理</button>
+            <button>系统统计</button>
+            <button>系统配置</button>
+            <button>审计日志</button>
+        </div>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="filters">
+        <div>
+            <label for="search">搜索关键词:</label>
+            <input type="text" id="search" placeholder="请输入关键词">
+        </div>
+        <div>
+            <label for="category">类别:</label>
+            <select id="category">
+                <option value="all">全部</option>
+                <option value="user">用户</option>
+                <option value="operation">操作</option>
+                <option value="system">系统</option>
+            </select>
+        </div>
+        <div>
+            <label for="level">级别:</label>
+            <select id="level">
+                <option value="all">全部</option>
+                <option value="admin">管理员</option>
+                <option value="staff">员工</option>
+            </select>
+        </div>
+        <div>
+            <label for="start-date">开始时间:</label>
+            <input type="date" id="start-date">
+        </div>
+        <div>
+            <label for="end-date">结束时间:</label>
+            <input type="date" id="end-date">
+        </div>
+        <div>
+            <button>搜索</button>
+            <button>清理</button>
+        </div>
+    </div>
+
+    <!-- Table Section -->
+    <div class="table-container">
+        <div class="table-actions">
+            <button>操作日志</button>
+            <button>聊天日志</button>
+            <button>系统日志</button>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>时间</th>
+                    <th>用户</th>
+                    <th>操作</th>
+                    <th>结果</th>
+                    <th>IP地址</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>2024-01-01 10:00</td>
+                    <td>admin</td>
+                    <td>用户登录</td>
+                    <td>成功</td>
+                    <td>192.168.1.100</td>
+                </tr>
+                <tr>
+                    <td>2024-01-01 10:05</td>
+                    <td>patient001</td>
+                    <td>查看FAQ</td>
+                    <td>成功</td>
+                    <td>192.168.1.101</td>
+                </tr>
+                <tr>
+                    <td>2024-01-01 10:10</td>
+                    <td>staff002</td>
+                    <td>处理问题</td>
+                    <td>成功</td>
+                    <td>192.168.1.102</td>
+                </tr>
+                <tr>
+                    <td>2024-01-01 10:15</td>
+                    <td>admin</td>
+                    <td>修改配置</td>
+                    <td>成功</td>
+                    <td>192.168.1.100</td>
+                </tr>
+                <tr>
+                    <td>2024-01-01 10:20</td>
+                    <td>patient003</td>
+                    <td>发起聊天</td>
+                    <td>成功</td>
+                    <td>192.168.1.103</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Footer Section -->
+    <div class="footer">
+        <div class="user-info">当前用户: 管理员 | 角色: 管理员</div>
+        <div class="version">HospAI v1.0.0</div>
+    </div>
+
+</body>
+</html>
