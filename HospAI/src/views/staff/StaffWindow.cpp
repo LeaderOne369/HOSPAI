@@ -2,6 +2,7 @@
 #include "RecordWidget.h"
 #include "StatsWidget.h"
 #include "ManualChatWidget.h"
+#include "../common/SettingsDialog.h"
 #include <QMessageBox>
 
 StaffWindow::StaffWindow(QWidget *parent)
@@ -126,5 +127,13 @@ void StaffWindow::onExportClicked()
 
 void StaffWindow::onSettingsClicked()
 {
-    QMessageBox::information(this, "设置", "系统设置功能暂未实现");
+    SettingsDialog dialog("staff", this);
+    
+    // 连接设置变更信号
+    connect(&dialog, &SettingsDialog::settingsChanged, this, [this]() {
+        // 可以在这里处理设置变更后的逻辑
+        qDebug() << "客服端设置已更新";
+    });
+    
+    dialog.exec();
 } 

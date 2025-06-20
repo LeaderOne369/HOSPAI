@@ -5,6 +5,8 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QTabWidget>
+#include <QTimer>
+#include <QLabel>
 #include "StaffChatManager.h"
 #include "ConsultationWidget.h"
 #include "StatsWidget.h"
@@ -20,6 +22,9 @@ public:
     
     void setCurrentUser(const UserInfo& user);
     void setDatabaseManager(DatabaseManager* dbManager);
+
+private slots:
+    void initializeComponents();
 
 private:
     void setupUI();

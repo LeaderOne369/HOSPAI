@@ -9,7 +9,7 @@ RegisterDialog::RegisterDialog(QWidget *parent)
     : QDialog(parent)
 {
     setWindowTitle("HospAI - 注册账号");
-    setFixedSize(675, 1000);
+    setFixedSize(675, 800);
     setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground);
     

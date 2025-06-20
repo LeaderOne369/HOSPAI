@@ -13,15 +13,16 @@
 #include <QProgressBar>
 #include <QTabWidget>
 #include <QTableWidget>
-#include <QtCharts/QChartView>
-#include <QtCharts/QPieSeries>
-#include <QtCharts/QBarSeries>
-#include <QtCharts/QLineSeries>
-#include <QtCharts/QChart>
+// 暂时移除Charts依赖，使用简单组件替代
+// #include <QtCharts/QChartView>
+// #include <QtCharts/QPieSeries>
+// #include <QtCharts/QBarSeries>
+// #include <QtCharts/QLineSeries>
+// #include <QtCharts/QChart>
 
 // 前向声明
 QT_BEGIN_NAMESPACE
-class QChartView;
+// class QChartView;
 QT_END_NAMESPACE
 
 class SystemStatsWidget : public QWidget
@@ -74,13 +75,13 @@ private:
     // 用户统计选项卡
     QWidget* m_userStatsTab;
     QHBoxLayout* m_userStatsLayout;
-    QChartView* m_userPieChart;
+    QLabel* m_userPieChart;  // 暂时替换为QLabel
     QTableWidget* m_userStatsTable;
     
     // 系统统计选项卡
     QWidget* m_systemStatsTab;
     QVBoxLayout* m_systemStatsLayout;
-    QChartView* m_performanceChart;
+    QLabel* m_performanceChart;  // 暂时替换为QLabel
     QGroupBox* m_resourceGroup;
     
     // 报表选项卡

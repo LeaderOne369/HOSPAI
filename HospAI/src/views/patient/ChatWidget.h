@@ -32,6 +32,7 @@
 #include "../../core/DatabaseManager.h"
 #include "../../core/AIApiClient.h"
 #include "../../core/RichMessageTypes.h"
+#include "../common/SettingsDialog.h"
 
 // AI分诊消息结构体 (保持向后兼容)
 struct AIMessage {
@@ -152,6 +153,11 @@ private:
     QString formatTimestamp(const QDateTime& timestamp);
     QString extractKeywords(const QString& text);
     QStringList getSymptomKeywords(const QString& text);
+    
+    // 设置相关方法
+    void loadUserSettings();
+    void updateChatFont();
+    void updateTheme();
 
 private:
     // 主布局

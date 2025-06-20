@@ -1484,7 +1484,7 @@ void StaffChatManager::setupQuickReplyPanel()
     m_quickReplyGroup = new QGroupBox("快捷回复", this);
     m_quickReplyGroup->setVisible(false); // 初始隐藏
     UIStyleManager::applyGroupBoxStyle(m_quickReplyGroup);
-    m_quickReplyGroup->setMaximumHeight(80);
+    m_quickReplyGroup->setMaximumHeight(180);  // 调整为1.5倍高度：80 * 1.5 = 120
     
     QVBoxLayout* quickReplyMainLayout = new QVBoxLayout(m_quickReplyGroup);
     quickReplyMainLayout->setContentsMargins(10, 15, 10, 10);

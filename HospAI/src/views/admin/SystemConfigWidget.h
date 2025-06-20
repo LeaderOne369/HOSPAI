@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QGridLayout>
 #include <QTabWidget>
 #include <QGroupBox>
 #include <QLineEdit>
@@ -16,6 +17,7 @@
 #include <QTableWidget>
 #include <QSlider>
 #include <QDialog>
+#include <QMessageBox>
 
 class SystemConfigWidget : public QWidget
 {
@@ -93,6 +95,19 @@ private:
     QPushButton* m_btnDeleteDept;
 };
 
+// FAQ数据结构
+struct FAQItem {
+    int id;
+    QString question;
+    QString answer;
+    QString category;
+    int priority;
+    bool enabled;
+    QString keywords;
+    QString createTime;
+    QString updateTime;
+};
+
 // FAQ编辑对话框
 class FAQEditDialog : public QDialog
 {
@@ -100,22 +115,37 @@ class FAQEditDialog : public QDialog
 
 public:
     explicit FAQEditDialog(QWidget *parent = nullptr);
-    void setFAQData(const QString& question, const QString& answer, const QString& category);
-    
-    QString getQuestion() const;
-    QString getAnswer() const;
-    QString getCategory() const;
+    explicit FAQEditDialog(const FAQItem& item, QWidget *parent = nullptr);
+
+    FAQItem getFAQItem() const;
+    void setFAQItem(const FAQItem& item);
+
+signals:
+    void faqSaved(const FAQItem& item);
+
+private slots:
+    void onOkClicked();
+    void onCancelClicked();
+    void onPreviewClicked();
 
 private:
     void setupUI();
+    void connectSignals();
+    bool validateInput();
 
-private:
-    QVBoxLayout* m_layout;
     QLineEdit* m_editQuestion;
     QTextEdit* m_editAnswer;
     QComboBox* m_comboCategory;
+    QLineEdit* m_editKeywords;
+    QSpinBox* m_spinPriority;
+    QCheckBox* m_checkEnabled;
+    
     QPushButton* m_btnOk;
     QPushButton* m_btnCancel;
+    QPushButton* m_btnPreview;
+    
+    FAQItem m_currentItem;
+    bool m_isEditMode;
 };
 
 // 科室编辑对话框
@@ -124,26 +154,48 @@ class DepartmentEditDialog : public QDialog
     Q_OBJECT
 
 public:
+    struct DepartmentInfo {
+        int id;
+        QString name;
+        QString location;
+        QString phone;
+        QString description;
+        QString workTime;
+        QString director;
+        bool isActive;
+    };
+
     explicit DepartmentEditDialog(QWidget *parent = nullptr);
-    void setDepartmentData(const QString& name, const QString& location, 
-                          const QString& phone, const QString& description);
-    
-    QString getName() const;
-    QString getLocation() const;
-    QString getPhone() const;
-    QString getDescription() const;
+    explicit DepartmentEditDialog(const DepartmentInfo& dept, QWidget *parent = nullptr);
+
+    DepartmentInfo getDepartmentInfo() const;
+    void setDepartmentInfo(const DepartmentInfo& dept);
+
+signals:
+    void departmentSaved(const DepartmentInfo& dept);
+
+private slots:
+    void onOkClicked();
+    void onCancelClicked();
 
 private:
     void setupUI();
+    void connectSignals();
+    bool validateInput();
 
-private:
-    QVBoxLayout* m_layout;
     QLineEdit* m_editName;
     QLineEdit* m_editLocation;
     QLineEdit* m_editPhone;
     QTextEdit* m_editDescription;
+    QLineEdit* m_editWorkTime;
+    QLineEdit* m_editDirector;
+    QCheckBox* m_checkActive;
+    
     QPushButton* m_btnOk;
     QPushButton* m_btnCancel;
+    
+    DepartmentInfo m_currentDept;
+    bool m_isEditMode;
 };
 
 #endif // SYSTEMCONFIGWIDGET_H 

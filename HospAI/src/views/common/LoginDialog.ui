@@ -1,0 +1,514 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>LoginDialog</class>
+ <widget class="QDialog" name="LoginDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>480</width>
+    <height>740</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>HospAI - 登录</string>
+  </property>
+  <property name="styleSheet">
+   <string>LoginDialog {
+    background-color: #f8f9fa;
+}
+
+QFrame#loginFrame {
+    background-color: white;
+    border: 2px solid #dee2e6;
+    border-radius: 15px;
+}
+
+QLabel#logoLabel {
+    font-size: 64px;
+    color: #2c3e50;
+    margin: 10px;
+}
+
+QLabel#titleLabel {
+    font-size: 32px;
+    font-weight: bold;
+    color: #2c3e50;
+    margin: 5px;
+}
+
+QLabel#subtitleLabel {
+    font-size: 14px;
+    color: #6c757d;
+    margin: 5px;
+}
+
+QFrame#inputFrame {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 10px;
+    padding: 10px;
+}
+
+QLabel#inputLabel {
+    font-size: 14px;
+    font-weight: bold;
+    color: #495057;
+    min-width: 90px;
+    max-width: 90px;
+    margin-right: 10px;
+}
+
+QLineEdit#inputEdit {
+    padding: 12px 15px;
+    border: 2px solid #E5E5EA;
+    border-radius: 8px;
+    font-size: 14px;
+    background-color: white;
+    min-height: 25px;
+    selection-background-color: #007AFF;
+}
+
+QLineEdit#inputEdit:focus {
+    outline: none;
+    border-color: #007AFF;
+    background-color: #ffffff;
+}
+
+QComboBox#roleCombo {
+    padding: 12px 15px;
+    border: 2px solid #E5E5EA;
+    border-radius: 8px;
+    font-size: 14px;
+    background-color: white;
+    min-height: 25px;
+}
+
+QComboBox#roleCombo:focus {
+    outline: none;
+    border-color: #007AFF;
+}
+
+QCheckBox#rememberCheck {
+    font-size: 13px;
+    color: #6c757d;
+    spacing: 8px;
+}
+
+QCheckBox#rememberCheck::indicator {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #dee2e6;
+    border-radius: 4px;
+    background: white;
+}
+
+QCheckBox#rememberCheck::indicator:checked {
+    background: #007AFF;
+    border-color: #007AFF;
+}
+
+QPushButton#loginButton {
+    padding: 15px 30px;
+    font-size: 16px;
+    font-weight: bold;
+    color: white;
+    background-color: #007AFF;
+    border: none;
+    border-radius: 8px;
+    min-height: 30px;
+}
+
+QPushButton#loginButton:hover:enabled {
+    background-color: #0056CC;
+}
+
+QPushButton#loginButton:pressed:enabled {
+    background-color: #004085;
+}
+
+QPushButton#loginButton:disabled {
+    background-color: #C7C7CC;
+    color: #ffffff;
+}
+
+QPushButton#linkButton {
+    background: transparent;
+    border: none;
+    color: #007AFF;
+    font-size: 14px;
+    text-decoration: underline;
+    padding: 8px 16px;
+}
+
+QPushButton#linkButton:hover {
+    color: #0056CC;
+    background: rgba(0, 122, 255, 0.1);
+    border-radius: 6px;
+}
+
+QLabel#messageLabel {
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+QLabel#messageLabel[error="true"] {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+QLabel#messageLabel[error="false"] {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}</string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <property name="spacing">
+    <number>0</number>
+   </property>
+   <property name="leftMargin">
+    <number>20</number>
+   </property>
+   <property name="topMargin">
+    <number>20</number>
+   </property>
+   <property name="rightMargin">
+    <number>20</number>
+   </property>
+   <property name="bottomMargin">
+    <number>20</number>
+   </property>
+   <item>
+    <widget class="QFrame" name="loginFrame">
+     <property name="frameShape">
+      <enum>QFrame::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Raised</enum>
+     </property>
+     <layout class="QVBoxLayout" name="frameLayout">
+      <property name="spacing">
+       <number>20</number>
+      </property>
+      <property name="leftMargin">
+       <number>30</number>
+      </property>
+      <property name="topMargin">
+       <number>30</number>
+      </property>
+      <property name="rightMargin">
+       <number>30</number>
+      </property>
+      <property name="bottomMargin">
+       <number>30</number>
+      </property>
+      <item>
+       <widget class="QLabel" name="logoLabel">
+        <property name="text">
+         <string>🏥</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="titleLabel">
+        <property name="text">
+         <string>HospAI</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="subtitleLabel">
+        <property name="text">
+         <string>医院智慧客服系统</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="verticalSpacer_1">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeType">
+         <enum>QSizePolicy::Fixed</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>10</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QFrame" name="inputFrame">
+        <property name="frameShape">
+         <enum>QFrame::StyledPanel</enum>
+        </property>
+        <property name="frameShadow">
+         <enum>QFrame::Raised</enum>
+        </property>
+        <layout class="QGridLayout" name="inputLayout">
+         <property name="leftMargin">
+          <number>25</number>
+         </property>
+         <property name="topMargin">
+          <number>25</number>
+         </property>
+         <property name="rightMargin">
+          <number>25</number>
+         </property>
+         <property name="bottomMargin">
+          <number>25</number>
+         </property>
+         <property name="horizontalSpacing">
+          <number>15</number>
+         </property>
+         <property name="verticalSpacing">
+          <number>15</number>
+         </property>
+         <item row="0" column="0">
+          <widget class="QLabel" name="roleLabel">
+           <property name="text">
+            <string>登录身份:</string>
+           </property>
+           <property name="objectName">
+            <string notr="true">inputLabel</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QComboBox" name="roleCombo">
+           <property name="objectName">
+            <string notr="true">roleCombo</string>
+           </property>
+           <item>
+            <property name="text">
+             <string>👨‍⚕️ 患者</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>👩‍💼 客服</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>👨‍💻 管理员</string>
+            </property>
+           </item>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="usernameLabel">
+           <property name="text">
+            <string>用户名:</string>
+           </property>
+           <property name="objectName">
+            <string notr="true">inputLabel</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QLineEdit" name="usernameEdit">
+           <property name="placeholderText">
+            <string>请输入用户名</string>
+           </property>
+           <property name="objectName">
+            <string notr="true">inputEdit</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="passwordLabel">
+           <property name="text">
+            <string>密码:</string>
+           </property>
+           <property name="objectName">
+            <string notr="true">inputLabel</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QLineEdit" name="passwordEdit">
+           <property name="echoMode">
+            <enum>QLineEdit::Password</enum>
+           </property>
+           <property name="placeholderText">
+            <string>请输入密码</string>
+           </property>
+           <property name="objectName">
+            <string notr="true">inputEdit</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="1">
+          <widget class="QWidget" name="checkboxContainer" native="true">
+           <layout class="QHBoxLayout" name="checkboxLayout">
+            <property name="leftMargin">
+             <number>0</number>
+            </property>
+            <property name="topMargin">
+             <number>8</number>
+            </property>
+            <property name="rightMargin">
+             <number>0</number>
+            </property>
+            <property name="bottomMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <widget class="QCheckBox" name="rememberCheck">
+              <property name="text">
+               <string>记住密码</string>
+              </property>
+              <property name="objectName">
+               <string notr="true">rememberCheck</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="horizontalSpacer">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QFrame" name="buttonFrame">
+        <property name="frameShape">
+         <enum>QFrame::StyledPanel</enum>
+        </property>
+        <property name="frameShadow">
+         <enum>QFrame::Raised</enum>
+        </property>
+        <layout class="QVBoxLayout" name="buttonLayout">
+         <property name="spacing">
+          <number>15</number>
+         </property>
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QPushButton" name="loginButton">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+           <property name="text">
+            <string>登 录</string>
+           </property>
+           <property name="objectName">
+            <string notr="true">loginButton</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="linkLayout">
+           <item>
+            <widget class="QPushButton" name="registerButton">
+             <property name="text">
+              <string>注册账号</string>
+             </property>
+             <property name="objectName">
+              <string notr="true">linkButton</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <spacer name="horizontalSpacer_2">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item>
+            <widget class="QPushButton" name="forgotButton">
+             <property name="text">
+              <string>忘记密码</string>
+             </property>
+             <property name="objectName">
+              <string notr="true">linkButton</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="messageLabel">
+        <property name="text">
+         <string/>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+        <property name="objectName">
+         <string notr="true">messageLabel</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="verticalSpacer_2">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>40</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui> 

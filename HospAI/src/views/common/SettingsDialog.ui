@@ -1,0 +1,653 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SettingsDialog</class>
+ <widget class="QDialog" name="SettingsDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>700</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>设置</string>
+  </property>
+  <property name="modal">
+   <bool>true</bool>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QTabWidget" name="tabWidget">
+     <property name="currentIndex">
+      <number>0</number>
+     </property>
+     <!-- 通用设置选项卡 -->
+     <widget class="QWidget" name="generalTab">
+      <attribute name="title">
+       <string>⚙️ 通用</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="generalLayout">
+       <item>
+        <widget class="QGroupBox" name="languageGroup">
+         <property name="title">
+          <string>语言设置</string>
+         </property>
+         <layout class="QFormLayout" name="languageFormLayout">
+          <item row="0" column="0">
+           <widget class="QLabel" name="languageLabel">
+            <property name="text">
+             <string>界面语言：</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QComboBox" name="languageCombo">
+            <item>
+             <property name="text">
+              <string>简体中文</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>English</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>繁體中文</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="themeGroup">
+         <property name="title">
+          <string>主题设置</string>
+         </property>
+         <layout class="QFormLayout" name="themeFormLayout">
+          <item row="0" column="0">
+           <widget class="QLabel" name="themeLabel">
+            <property name="text">
+             <string>界面主题：</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QComboBox" name="themeCombo">
+            <item>
+             <property name="text">
+              <string>浅色主题</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>深色主题</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>护眼主题</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>跟随系统</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="startupGroup">
+         <property name="title">
+          <string>启动设置</string>
+         </property>
+         <layout class="QVBoxLayout" name="startupLayout">
+          <item>
+           <widget class="QCheckBox" name="autoStartCheck">
+            <property name="text">
+             <string>开机自动启动</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="rememberWindowCheck">
+            <property name="text">
+             <string>记住窗口位置和大小</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="minimizeToTrayCheck">
+            <property name="text">
+             <string>最小化到系统托盘</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <spacer name="generalSpacer">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+     <!-- 聊天设置选项卡 -->
+     <widget class="QWidget" name="chatTab">
+      <attribute name="title">
+       <string>💬 聊天</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="chatLayout">
+       <item>
+        <widget class="QGroupBox" name="fontGroup">
+         <property name="title">
+          <string>字体设置</string>
+         </property>
+         <layout class="QFormLayout" name="fontFormLayout">
+          <item row="0" column="0">
+           <widget class="QLabel" name="fontFamilyLabel">
+            <property name="text">
+             <string>字体：</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QFontComboBox" name="fontFamilyCombo"/>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="fontSizeLabel">
+            <property name="text">
+             <string>大小：</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QSpinBox" name="fontSizeSpinBox">
+            <property name="minimum">
+             <number>8</number>
+            </property>
+            <property name="maximum">
+             <number>36</number>
+            </property>
+            <property name="value">
+             <number>12</number>
+            </property>
+            <property name="suffix">
+             <string> pt</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="messageGroup">
+         <property name="title">
+          <string>消息设置</string>
+         </property>
+         <layout class="QVBoxLayout" name="messageLayout">
+          <item>
+           <widget class="QCheckBox" name="showTimestampCheck">
+            <property name="text">
+             <string>显示消息时间戳</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="showTypingCheck">
+            <property name="text">
+             <string>显示对方正在输入提示</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="autoSaveHistoryCheck">
+            <property name="text">
+             <string>自动保存聊天记录</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="historyGroup">
+         <property name="title">
+          <string>历史记录</string>
+         </property>
+         <layout class="QFormLayout" name="historyFormLayout">
+          <item row="0" column="0">
+           <widget class="QLabel" name="maxHistoryLabel">
+            <property name="text">
+             <string>最大保存条数：</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QSpinBox" name="maxHistorySpinBox">
+            <property name="minimum">
+             <number>100</number>
+            </property>
+            <property name="maximum">
+             <number>10000</number>
+            </property>
+            <property name="singleStep">
+             <number>100</number>
+            </property>
+            <property name="value">
+             <number>1000</number>
+            </property>
+            <property name="suffix">
+             <string> 条</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QPushButton" name="clearHistoryBtn">
+            <property name="text">
+             <string>清空聊天记录</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <spacer name="chatSpacer">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+     <!-- 通知设置选项卡 -->
+     <widget class="QWidget" name="notificationTab">
+      <attribute name="title">
+       <string>🔔 通知</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="notificationLayout">
+       <item>
+        <widget class="QGroupBox" name="desktopNotificationGroup">
+         <property name="title">
+          <string>桌面通知</string>
+         </property>
+         <layout class="QVBoxLayout" name="desktopNotificationLayout">
+          <item>
+           <widget class="QCheckBox" name="enableNotificationCheck">
+            <property name="text">
+             <string>启用桌面通知</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="showPreviewCheck">
+            <property name="text">
+             <string>显示消息预览</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="urgentMessageCheck">
+            <property name="text">
+             <string>紧急消息单独提醒</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="soundGroup">
+         <property name="title">
+          <string>声音设置</string>
+         </property>
+         <layout class="QVBoxLayout" name="soundLayout">
+          <item>
+           <widget class="QCheckBox" name="enableSoundCheck">
+            <property name="text">
+             <string>启用消息提示音</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="volumeLayout">
+            <item>
+             <widget class="QLabel" name="volumeLabel">
+              <property name="text">
+               <string>音量：</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QSlider" name="volumeSlider">
+              <property name="maximum">
+               <number>100</number>
+              </property>
+              <property name="value">
+               <number>50</number>
+              </property>
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="volumeValueLabel">
+              <property name="text">
+               <string>50%</string>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>40</width>
+                <height>0</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <spacer name="notificationSpacer">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+     <!-- 高级设置选项卡 -->
+     <widget class="QWidget" name="advancedTab">
+      <attribute name="title">
+       <string>🔧 高级</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="advancedLayout">
+       <item>
+        <widget class="QGroupBox" name="networkGroup">
+         <property name="title">
+          <string>网络设置</string>
+         </property>
+         <layout class="QFormLayout" name="networkFormLayout">
+          <item row="0" column="0" colspan="2">
+           <widget class="QCheckBox" name="useProxyCheck">
+            <property name="text">
+             <string>使用代理服务器</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="proxyHostLabel">
+            <property name="text">
+             <string>代理地址：</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLineEdit" name="proxyHostEdit">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="placeholderText">
+             <string>127.0.0.1</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="proxyPortLabel">
+            <property name="text">
+             <string>端口：</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QSpinBox" name="proxyPortSpinBox">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="minimum">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <number>65535</number>
+            </property>
+            <property name="value">
+             <number>8080</number>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="debugGroup">
+         <property name="title">
+          <string>调试设置</string>
+         </property>
+         <layout class="QVBoxLayout" name="debugLayout">
+          <item>
+           <widget class="QCheckBox" name="enableLogCheck">
+            <property name="text">
+             <string>启用日志记录</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="logLevelLayout">
+            <item>
+             <widget class="QLabel" name="logLevelLabel">
+              <property name="text">
+               <string>日志级别：</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QComboBox" name="logLevelCombo">
+              <item>
+               <property name="text">
+                <string>ERROR</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>WARNING</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>INFO</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>DEBUG</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+            <item>
+             <spacer name="logLevelSpacer">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="cacheGroup">
+         <property name="title">
+          <string>缓存管理</string>
+         </property>
+         <layout class="QFormLayout" name="cacheFormLayout">
+          <item row="0" column="0">
+           <widget class="QLabel" name="cacheSizeLabel">
+            <property name="text">
+             <string>缓存大小限制：</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QSpinBox" name="cacheSizeSpinBox">
+            <property name="suffix">
+             <string> MB</string>
+            </property>
+            <property name="minimum">
+             <number>10</number>
+            </property>
+            <property name="maximum">
+             <number>1000</number>
+            </property>
+            <property name="value">
+             <number>100</number>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QPushButton" name="clearCacheBtn">
+            <property name="text">
+             <string>清理缓存</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <spacer name="advancedSpacer">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+   <!-- 底部按钮区域 -->
+   <item>
+    <layout class="QHBoxLayout" name="buttonLayout">
+     <item>
+      <widget class="QPushButton" name="importBtn">
+       <property name="text">
+        <string>导入设置</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="exportBtn">
+       <property name="text">
+        <string>导出设置</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="resetBtn">
+       <property name="text">
+        <string>恢复默认</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="buttonSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="okBtn">
+       <property name="text">
+        <string>确定</string>
+       </property>
+       <property name="default">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="cancelBtn">
+       <property name="text">
+        <string>取消</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="applyBtn">
+       <property name="text">
+        <string>应用</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <connections>
+  <!-- 代理设置启用/禁用 -->
+  <connection>
+   <sender>useProxyCheck</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>proxyHostEdit</receiver>
+   <slot>setEnabled(bool)</slot>
+  </connection>
+  <connection>
+   <sender>useProxyCheck</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>proxyPortSpinBox</receiver>
+   <slot>setEnabled(bool)</slot>
+  </connection>
+  <!-- 按钮连接 -->
+  <connection>
+   <sender>okBtn</sender>
+   <signal>clicked()</signal>
+   <receiver>SettingsDialog</receiver>
+   <slot>accept()</slot>
+  </connection>
+  <connection>
+   <sender>cancelBtn</sender>
+   <signal>clicked()</signal>
+   <receiver>SettingsDialog</receiver>
+   <slot>reject()</slot>
+  </connection>
+ </connections>
+</ui>

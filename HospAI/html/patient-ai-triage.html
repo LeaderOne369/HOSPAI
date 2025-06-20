@@ -577,9 +577,165 @@
             alert('对话记录已保存到本地');
         }
 
-        function openSettings() {
-            alert('设置功能开发中...');
+            function openSettings() {
+        // 创建设置对话框
+        const settingsModal = document.createElement('div');
+        settingsModal.className = 'settings-modal';
+        settingsModal.innerHTML = `
+            <div class="settings-content">
+                <div class="settings-header">
+                    <h3>🔧 设置</h3>
+                    <button class="close-btn" onclick="closeSettings()">&times;</button>
+                </div>
+                <div class="settings-body">
+                    <div class="setting-group">
+                        <h4>通知设置</h4>
+                        <label><input type="checkbox" checked> 启用声音提示</label>
+                        <label><input type="checkbox" checked> 新消息通知</label>
+                        <label><input type="checkbox"> 震动提醒</label>
+                    </div>
+                    <div class="setting-group">
+                        <h4>显示设置</h4>
+                        <label>字体大小: <select>
+                            <option>小</option>
+                            <option selected>中</option>
+                            <option>大</option>
+                        </select></label>
+                        <label>主题: <select>
+                            <option selected>浅色</option>
+                            <option>深色</option>
+                            <option>护眼</option>
+                        </select></label>
+                    </div>
+                    <div class="setting-group">
+                        <h4>隐私设置</h4>
+                        <label><input type="checkbox" checked> 记住聊天记录</label>
+                        <label><input type="checkbox"> 匿名模式</label>
+                        <button class="clear-data-btn" onclick="clearChatData()">清除聊天数据</button>
+                    </div>
+                </div>
+                <div class="settings-footer">
+                    <button class="save-btn" onclick="saveSettings()">保存设置</button>
+                </div>
+            </div>
+        `;
+        
+        // 添加样式
+        const style = document.createElement('style');
+        style.textContent = `
+            .settings-modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 1000;
+            }
+            .settings-content {
+                background: white;
+                border-radius: 12px;
+                width: 90%;
+                max-width: 400px;
+                max-height: 80vh;
+                overflow-y: auto;
+                box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            }
+            .settings-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 20px;
+                border-bottom: 1px solid #eee;
+            }
+            .settings-header h3 {
+                margin: 0;
+                color: #333;
+            }
+            .close-btn {
+                background: none;
+                border: none;
+                font-size: 24px;
+                cursor: pointer;
+                color: #999;
+            }
+            .settings-body {
+                padding: 20px;
+            }
+            .setting-group {
+                margin-bottom: 20px;
+            }
+            .setting-group h4 {
+                margin: 0 0 10px 0;
+                color: #333;
+                font-size: 16px;
+            }
+            .setting-group label {
+                display: block;
+                margin-bottom: 8px;
+                color: #666;
+            }
+            .setting-group input, .setting-group select {
+                margin-left: 8px;
+            }
+            .clear-data-btn {
+                background: #ff4757;
+                color: white;
+                border: none;
+                padding: 6px 12px;
+                border-radius: 6px;
+                cursor: pointer;
+                margin-top: 8px;
+            }
+            .settings-footer {
+                padding: 20px;
+                border-top: 1px solid #eee;
+                text-align: center;
+            }
+            .save-btn {
+                background: #007AFF;
+                color: white;
+                border: none;
+                padding: 12px 24px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 16px;
+            }
+        `;
+        
+        document.head.appendChild(style);
+        document.body.appendChild(settingsModal);
+    }
+    
+    function closeSettings() {
+        const modal = document.querySelector('.settings-modal');
+        if (modal) {
+            modal.remove();
         }
+    }
+    
+    function saveSettings() {
+        // 保存设置到本地存储
+        const settings = {
+            soundEnabled: document.querySelector('.settings-body input[type="checkbox"]').checked,
+            fontSize: document.querySelector('.settings-body select').value,
+            theme: document.querySelectorAll('.settings-body select')[1].value
+        };
+        
+        localStorage.setItem('hospai_settings', JSON.stringify(settings));
+        alert('设置已保存！');
+        closeSettings();
+    }
+    
+    function clearChatData() {
+        if (confirm('确定要清除所有聊天数据吗？此操作不可恢复。')) {
+            localStorage.removeItem('hospai_chat_history');
+            alert('聊天数据已清除！');
+        }
+    }
 
         function insertEmoji() {
             alert('表情功能开发中...');

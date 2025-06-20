@@ -2,6 +2,8 @@
 #include "../common/UIStyleManager.h"
 #include <QHeaderView>
 #include <QMessageBox>
+#include <QInputDialog>
+#include <QDateTime>
 
 SystemConfigWidget::SystemConfigWidget(QWidget *parent)
     : QWidget(parent)
@@ -292,192 +294,490 @@ void SystemConfigWidget::onExportConfig()
 
 void SystemConfigWidget::onAddFAQ()
 {
-    QMessageBox::information(this, "添加FAQ", "FAQ添加功能将在后续版本中实现");
+    FAQEditDialog dialog(this);
+    
+    connect(&dialog, &FAQEditDialog::faqSaved, this, [this](const FAQItem& item) {
+        // 添加到表格
+        int row = m_faqTable->rowCount();
+        m_faqTable->insertRow(row);
+        m_faqTable->setItem(row, 0, new QTableWidgetItem(item.question));
+        m_faqTable->setItem(row, 1, new QTableWidgetItem(item.answer));
+        m_faqTable->setItem(row, 2, new QTableWidgetItem(item.category));
+        
+        QMessageBox::information(this, "添加成功", "FAQ已成功添加！");
+    });
+    
+    dialog.exec();
 }
 
 void SystemConfigWidget::onEditFAQ()
 {
-    QMessageBox::information(this, "编辑FAQ", "FAQ编辑功能将在后续版本中实现");
+    int currentRow = m_faqTable->currentRow();
+    if (currentRow < 0) {
+        QMessageBox::warning(this, "选择错误", "请先选择要编辑的FAQ！");
+        return;
+    }
+    
+    // 构造当前FAQ项
+    FAQItem item;
+    item.id = currentRow; // 简化处理，使用行号作为ID
+    item.question = m_faqTable->item(currentRow, 0)->text();
+    item.answer = m_faqTable->item(currentRow, 1)->text();
+    item.category = m_faqTable->item(currentRow, 2)->text();
+    item.priority = 1;
+    item.enabled = true;
+    
+    FAQEditDialog dialog(item, this);
+    
+    connect(&dialog, &FAQEditDialog::faqSaved, this, [this, currentRow](const FAQItem& item) {
+        // 更新表格
+        m_faqTable->setItem(currentRow, 0, new QTableWidgetItem(item.question));
+        m_faqTable->setItem(currentRow, 1, new QTableWidgetItem(item.answer));
+        m_faqTable->setItem(currentRow, 2, new QTableWidgetItem(item.category));
+        
+        QMessageBox::information(this, "更新成功", "FAQ已成功更新！");
+    });
+    
+    dialog.exec();
 }
 
 void SystemConfigWidget::onDeleteFAQ()
 {
-    QMessageBox::information(this, "删除FAQ", "FAQ删除功能将在后续版本中实现");
+    int currentRow = m_faqTable->currentRow();
+    if (currentRow < 0) {
+        QMessageBox::warning(this, "选择错误", "请先选择要删除的FAQ！");
+        return;
+    }
+    
+    QString question = m_faqTable->item(currentRow, 0)->text();
+    QMessageBox::StandardButton reply = QMessageBox::question(
+        this,
+        "确认删除",
+        QString("确定要删除FAQ：\n\"%1\"").arg(question),
+        QMessageBox::Yes | QMessageBox::No
+    );
+    
+    if (reply == QMessageBox::Yes) {
+        m_faqTable->removeRow(currentRow);
+        QMessageBox::information(this, "删除成功", "FAQ已成功删除！");
+    }
 }
 
 void SystemConfigWidget::onAddDepartment()
 {
-    QMessageBox::information(this, "添加科室", "科室添加功能将在后续版本中实现");
+    DepartmentEditDialog dialog(this);
+    
+    connect(&dialog, &DepartmentEditDialog::departmentSaved, this, [this](const DepartmentEditDialog::DepartmentInfo& dept) {
+        // 添加到表格
+        int row = m_departmentTable->rowCount();
+        m_departmentTable->insertRow(row);
+        m_departmentTable->setItem(row, 0, new QTableWidgetItem(dept.name));
+        m_departmentTable->setItem(row, 1, new QTableWidgetItem(dept.location));
+        m_departmentTable->setItem(row, 2, new QTableWidgetItem(dept.phone));
+        m_departmentTable->setItem(row, 3, new QTableWidgetItem(dept.description));
+        
+        QMessageBox::information(this, "添加成功", "科室已成功添加！");
+    });
+    
+    dialog.exec();
 }
 
 void SystemConfigWidget::onEditDepartment()
 {
-    QMessageBox::information(this, "编辑科室", "科室编辑功能将在后续版本中实现");
+    int currentRow = m_departmentTable->currentRow();
+    if (currentRow < 0) {
+        QMessageBox::warning(this, "选择错误", "请先选择要编辑的科室！");
+        return;
+    }
+    
+    // 构造当前科室信息
+    DepartmentEditDialog::DepartmentInfo dept;
+    dept.id = currentRow; // 简化处理，使用行号作为ID
+    dept.name = m_departmentTable->item(currentRow, 0)->text();
+    dept.location = m_departmentTable->item(currentRow, 1)->text();
+    dept.phone = m_departmentTable->item(currentRow, 2)->text();
+    dept.description = m_departmentTable->item(currentRow, 3)->text();
+    dept.workTime = "周一至周五 8:00-17:00";
+    dept.director = "";
+    dept.isActive = true;
+    
+    DepartmentEditDialog dialog(dept, this);
+    
+    connect(&dialog, &DepartmentEditDialog::departmentSaved, this, [this, currentRow](const DepartmentEditDialog::DepartmentInfo& dept) {
+        // 更新表格
+        m_departmentTable->setItem(currentRow, 0, new QTableWidgetItem(dept.name));
+        m_departmentTable->setItem(currentRow, 1, new QTableWidgetItem(dept.location));
+        m_departmentTable->setItem(currentRow, 2, new QTableWidgetItem(dept.phone));
+        m_departmentTable->setItem(currentRow, 3, new QTableWidgetItem(dept.description));
+        
+        QMessageBox::information(this, "更新成功", "科室信息已成功更新！");
+    });
+    
+    dialog.exec();
 }
 
 void SystemConfigWidget::onDeleteDepartment()
 {
-    QMessageBox::information(this, "删除科室", "科室删除功能将在后续版本中实现");
+    int currentRow = m_departmentTable->currentRow();
+    if (currentRow < 0) {
+        QMessageBox::warning(this, "选择错误", "请先选择要删除的科室！");
+        return;
+    }
+    
+    QString deptName = m_departmentTable->item(currentRow, 0)->text();
+    QMessageBox::StandardButton reply = QMessageBox::question(
+        this,
+        "确认删除",
+        QString("确定要删除科室：\n\"%1\"").arg(deptName),
+        QMessageBox::Yes | QMessageBox::No
+    );
+    
+    if (reply == QMessageBox::Yes) {
+        m_departmentTable->removeRow(currentRow);
+        QMessageBox::information(this, "删除成功", "科室已成功删除！");
+    }
 }
 
 // FAQEditDialog 实现
 FAQEditDialog::FAQEditDialog(QWidget *parent)
     : QDialog(parent)
+    , m_isEditMode(false)
 {
-    setWindowTitle("编辑FAQ");
-    setFixedSize(400, 300);
+    setupUI();
+    connectSignals();
+    
+    // 初始化新FAQ项
+    m_currentItem.id = -1;
+    m_currentItem.priority = 1;
+    m_currentItem.enabled = true;
+    m_currentItem.createTime = QDateTime::currentDateTime().toString(Qt::ISODate);
+}
+
+FAQEditDialog::FAQEditDialog(const FAQItem& item, QWidget *parent)
+    : QDialog(parent)
+    , m_currentItem(item)
+    , m_isEditMode(true)
+{
+    setupUI();
+    connectSignals();
+    setFAQItem(item);
+}
+
+void FAQEditDialog::setupUI()
+{
+    setWindowTitle(m_isEditMode ? "编辑FAQ" : "添加FAQ");
+    setFixedSize(500, 400);
     setModal(true);
     
-    QVBoxLayout* layout = new QVBoxLayout(this);
-    layout->setContentsMargins(20, 20, 20, 20);
-    layout->setSpacing(15);
+    QVBoxLayout* mainLayout = new QVBoxLayout(this);
+    mainLayout->setContentsMargins(20, 20, 20, 20);
+    mainLayout->setSpacing(15);
+    
+    // 创建表单布局
+    QGridLayout* formLayout = new QGridLayout;
+    formLayout->setSpacing(10);
     
     // 问题输入
-    QLabel* questionLabel = new QLabel("问题:");
+    formLayout->addWidget(new QLabel("问题*:"), 0, 0);
     m_editQuestion = new QLineEdit;
-    m_editQuestion->setPlaceholderText("输入常见问题...");
+    m_editQuestion->setPlaceholderText("请输入常见问题...");
+    UIStyleManager::applyLineEditStyle(m_editQuestion);
+    formLayout->addWidget(m_editQuestion, 0, 1);
     
     // 答案输入
-    QLabel* answerLabel = new QLabel("答案:");
+    formLayout->addWidget(new QLabel("答案*:"), 1, 0);
     m_editAnswer = new QTextEdit;
-    m_editAnswer->setPlaceholderText("输入问题答案...");
+    m_editAnswer->setPlaceholderText("请输入详细的答案...");
     m_editAnswer->setMaximumHeight(120);
+    formLayout->addWidget(m_editAnswer, 1, 1);
     
     // 分类选择
-    QLabel* categoryLabel = new QLabel("分类:");
+    formLayout->addWidget(new QLabel("分类:"), 2, 0);
     m_comboCategory = new QComboBox;
-    m_comboCategory->addItems({"挂号", "门诊", "检查", "其他"});
+    m_comboCategory->addItems({"挂号", "门诊", "检查", "住院", "费用", "其他"});
+    formLayout->addWidget(m_comboCategory, 2, 1);
     
-    // 按钮
+    // 关键词
+    formLayout->addWidget(new QLabel("关键词:"), 3, 0);
+    m_editKeywords = new QLineEdit;
+    m_editKeywords->setPlaceholderText("用逗号分隔多个关键词...");
+    UIStyleManager::applyLineEditStyle(m_editKeywords);
+    formLayout->addWidget(m_editKeywords, 3, 1);
+    
+    // 优先级
+    formLayout->addWidget(new QLabel("优先级:"), 4, 0);
+    m_spinPriority = new QSpinBox;
+    m_spinPriority->setRange(1, 10);
+    m_spinPriority->setValue(1);
+    m_spinPriority->setToolTip("1-10，数字越大优先级越高");
+    formLayout->addWidget(m_spinPriority, 4, 1);
+    
+    // 启用状态
+    m_checkEnabled = new QCheckBox("启用此FAQ");
+    m_checkEnabled->setChecked(true);
+    formLayout->addWidget(m_checkEnabled, 5, 1);
+    
+    mainLayout->addLayout(formLayout);
+    
+    // 按钮区域
     QHBoxLayout* buttonLayout = new QHBoxLayout;
-    QPushButton* okButton = new QPushButton("确定");
-    QPushButton* cancelButton = new QPushButton("取消");
     
-    UIStyleManager::applyButtonStyle(okButton, "primary");
-    UIStyleManager::applyButtonStyle(cancelButton, "secondary");
+    m_btnPreview = new QPushButton("预览");
+    m_btnCancel = new QPushButton("取消");
+    m_btnOk = new QPushButton(m_isEditMode ? "更新" : "添加");
     
-    connect(okButton, &QPushButton::clicked, this, &QDialog::accept);
-    connect(cancelButton, &QPushButton::clicked, this, &QDialog::reject);
+    UIStyleManager::applyButtonStyle(m_btnPreview, "secondary");
+    UIStyleManager::applyButtonStyle(m_btnCancel, "secondary");
+    UIStyleManager::applyButtonStyle(m_btnOk, "success");
     
+    buttonLayout->addWidget(m_btnPreview);
     buttonLayout->addStretch();
-    buttonLayout->addWidget(okButton);
-    buttonLayout->addWidget(cancelButton);
+    buttonLayout->addWidget(m_btnCancel);
+    buttonLayout->addWidget(m_btnOk);
     
-    layout->addWidget(questionLabel);
-    layout->addWidget(m_editQuestion);
-    layout->addWidget(answerLabel);
-    layout->addWidget(m_editAnswer);
-    layout->addWidget(categoryLabel);
-    layout->addWidget(m_comboCategory);
-    layout->addLayout(buttonLayout);
+    mainLayout->addLayout(buttonLayout);
 }
 
-QString FAQEditDialog::getQuestion() const
+void FAQEditDialog::connectSignals()
 {
-    return m_editQuestion->text();
+    connect(m_btnOk, &QPushButton::clicked, this, &FAQEditDialog::onOkClicked);
+    connect(m_btnCancel, &QPushButton::clicked, this, &FAQEditDialog::onCancelClicked);
+    connect(m_btnPreview, &QPushButton::clicked, this, &FAQEditDialog::onPreviewClicked);
 }
 
-QString FAQEditDialog::getAnswer() const
+void FAQEditDialog::setFAQItem(const FAQItem& item)
 {
-    return m_editAnswer->toPlainText();
+    m_currentItem = item;
+    
+    m_editQuestion->setText(item.question);
+    m_editAnswer->setText(item.answer);
+    m_comboCategory->setCurrentText(item.category);
+    m_editKeywords->setText(item.keywords);
+    m_spinPriority->setValue(item.priority);
+    m_checkEnabled->setChecked(item.enabled);
 }
 
-QString FAQEditDialog::getCategory() const
+FAQItem FAQEditDialog::getFAQItem() const
 {
-    return m_comboCategory->currentText();
+    FAQItem item = m_currentItem;
+    
+    item.question = m_editQuestion->text();
+    item.answer = m_editAnswer->toPlainText();
+    item.category = m_comboCategory->currentText();
+    item.keywords = m_editKeywords->text();
+    item.priority = m_spinPriority->value();
+    item.enabled = m_checkEnabled->isChecked();
+    
+    if (!m_isEditMode) {
+        item.createTime = QDateTime::currentDateTime().toString(Qt::ISODate);
+    }
+    item.updateTime = QDateTime::currentDateTime().toString(Qt::ISODate);
+    
+    return item;
 }
 
-void FAQEditDialog::setFAQData(const QString& question, const QString& answer, const QString& category)
+bool FAQEditDialog::validateInput()
 {
-    m_editQuestion->setText(question);
-    m_editAnswer->setPlainText(answer);
-    m_comboCategory->setCurrentText(category);
+    if (m_editQuestion->text().trimmed().isEmpty()) {
+        QMessageBox::warning(this, "输入错误", "请输入问题内容！");
+        m_editQuestion->setFocus();
+        return false;
+    }
+    
+    if (m_editAnswer->toPlainText().trimmed().isEmpty()) {
+        QMessageBox::warning(this, "输入错误", "请输入答案内容！");
+        m_editAnswer->setFocus();
+        return false;
+    }
+    
+    return true;
+}
+
+void FAQEditDialog::onOkClicked()
+{
+    if (validateInput()) {
+        FAQItem item = getFAQItem();
+        emit faqSaved(item);
+        accept();
+    }
+}
+
+void FAQEditDialog::onCancelClicked()
+{
+    reject();
+}
+
+void FAQEditDialog::onPreviewClicked()
+{
+    QString previewText = QString("问题：%1\n\n答案：%2\n\n分类：%3\n关键词：%4\n优先级：%5\n状态：%6")
+                            .arg(m_editQuestion->text())
+                            .arg(m_editAnswer->toPlainText())
+                            .arg(m_comboCategory->currentText())
+                            .arg(m_editKeywords->text())
+                            .arg(m_spinPriority->value())
+                            .arg(m_checkEnabled->isChecked() ? "启用" : "禁用");
+    
+    QMessageBox::information(this, "FAQ预览", previewText);
 }
 
 // DepartmentEditDialog 实现
 DepartmentEditDialog::DepartmentEditDialog(QWidget *parent)
     : QDialog(parent)
+    , m_isEditMode(false)
 {
-    setWindowTitle("编辑科室");
-    setFixedSize(400, 250);
+    setupUI();
+    connectSignals();
+    
+    // 初始化新部门信息
+    m_currentDept.id = -1;
+    m_currentDept.isActive = true;
+}
+
+DepartmentEditDialog::DepartmentEditDialog(const DepartmentInfo& dept, QWidget *parent)
+    : QDialog(parent)
+    , m_currentDept(dept)
+    , m_isEditMode(true)
+{
+    setupUI();
+    connectSignals();
+    setDepartmentInfo(dept);
+}
+
+void DepartmentEditDialog::setupUI()
+{
+    setWindowTitle(m_isEditMode ? "编辑科室" : "添加科室");
+    setFixedSize(450, 350);
     setModal(true);
     
-    QVBoxLayout* layout = new QVBoxLayout(this);
-    layout->setContentsMargins(20, 20, 20, 20);
-    layout->setSpacing(15);
+    QVBoxLayout* mainLayout = new QVBoxLayout(this);
+    mainLayout->setContentsMargins(20, 20, 20, 20);
+    mainLayout->setSpacing(15);
+    
+    // 创建表单布局
+    QGridLayout* formLayout = new QGridLayout;
+    formLayout->setSpacing(10);
     
     // 科室名称
-    QLabel* nameLabel = new QLabel("科室名称:");
+    formLayout->addWidget(new QLabel("科室名称*:"), 0, 0);
     m_editName = new QLineEdit;
-    m_editName->setPlaceholderText("输入科室名称...");
+    m_editName->setPlaceholderText("请输入科室名称...");
+    UIStyleManager::applyLineEditStyle(m_editName);
+    formLayout->addWidget(m_editName, 0, 1);
     
     // 位置
-    QLabel* locationLabel = new QLabel("位置:");
+    formLayout->addWidget(new QLabel("位置:"), 1, 0);
     m_editLocation = new QLineEdit;
-    m_editLocation->setPlaceholderText("输入科室位置...");
+    m_editLocation->setPlaceholderText("如：1楼东侧...");
+    UIStyleManager::applyLineEditStyle(m_editLocation);
+    formLayout->addWidget(m_editLocation, 1, 1);
     
     // 电话
-    QLabel* phoneLabel = new QLabel("电话:");
+    formLayout->addWidget(new QLabel("联系电话:"), 2, 0);
     m_editPhone = new QLineEdit;
-    m_editPhone->setPlaceholderText("输入联系电话...");
+    m_editPhone->setPlaceholderText("请输入联系电话...");
+    UIStyleManager::applyLineEditStyle(m_editPhone);
+    formLayout->addWidget(m_editPhone, 2, 1);
+    
+    // 工作时间
+    formLayout->addWidget(new QLabel("工作时间:"), 3, 0);
+    m_editWorkTime = new QLineEdit;
+    m_editWorkTime->setPlaceholderText("如：周一至周五 8:00-17:00");
+    m_editWorkTime->setText("周一至周五 8:00-17:00");
+    UIStyleManager::applyLineEditStyle(m_editWorkTime);
+    formLayout->addWidget(m_editWorkTime, 3, 1);
+    
+    // 科室主任
+    formLayout->addWidget(new QLabel("科室主任:"), 4, 0);
+    m_editDirector = new QLineEdit;
+    m_editDirector->setPlaceholderText("请输入科室主任姓名...");
+    UIStyleManager::applyLineEditStyle(m_editDirector);
+    formLayout->addWidget(m_editDirector, 4, 1);
     
     // 描述
-    QLabel* descLabel = new QLabel("描述:");
+    formLayout->addWidget(new QLabel("科室描述:"), 5, 0);
     m_editDescription = new QTextEdit;
-    m_editDescription->setPlaceholderText("输入科室描述...");
+    m_editDescription->setPlaceholderText("请输入科室简介...");
     m_editDescription->setMaximumHeight(80);
+    formLayout->addWidget(m_editDescription, 5, 1);
     
-    // 按钮
+    // 启用状态
+    m_checkActive = new QCheckBox("科室开放");
+    m_checkActive->setChecked(true);
+    formLayout->addWidget(m_checkActive, 6, 1);
+    
+    mainLayout->addLayout(formLayout);
+    
+    // 按钮区域
     QHBoxLayout* buttonLayout = new QHBoxLayout;
-    QPushButton* okButton = new QPushButton("确定");
-    QPushButton* cancelButton = new QPushButton("取消");
     
-    UIStyleManager::applyButtonStyle(okButton, "primary");
-    UIStyleManager::applyButtonStyle(cancelButton, "secondary");
+    m_btnCancel = new QPushButton("取消");
+    m_btnOk = new QPushButton(m_isEditMode ? "更新" : "添加");
     
-    connect(okButton, &QPushButton::clicked, this, &QDialog::accept);
-    connect(cancelButton, &QPushButton::clicked, this, &QDialog::reject);
+    UIStyleManager::applyButtonStyle(m_btnCancel, "secondary");
+    UIStyleManager::applyButtonStyle(m_btnOk, "success");
     
     buttonLayout->addStretch();
-    buttonLayout->addWidget(okButton);
-    buttonLayout->addWidget(cancelButton);
+    buttonLayout->addWidget(m_btnCancel);
+    buttonLayout->addWidget(m_btnOk);
     
-    layout->addWidget(nameLabel);
-    layout->addWidget(m_editName);
-    layout->addWidget(locationLabel);
-    layout->addWidget(m_editLocation);
-    layout->addWidget(phoneLabel);
-    layout->addWidget(m_editPhone);
-    layout->addWidget(descLabel);
-    layout->addWidget(m_editDescription);
-    layout->addLayout(buttonLayout);
+    mainLayout->addLayout(buttonLayout);
 }
 
-QString DepartmentEditDialog::getName() const
+void DepartmentEditDialog::connectSignals()
 {
-    return m_editName->text();
+    connect(m_btnOk, &QPushButton::clicked, this, &DepartmentEditDialog::onOkClicked);
+    connect(m_btnCancel, &QPushButton::clicked, this, &DepartmentEditDialog::onCancelClicked);
 }
 
-QString DepartmentEditDialog::getLocation() const
+void DepartmentEditDialog::setDepartmentInfo(const DepartmentInfo& dept)
 {
-    return m_editLocation->text();
+    m_currentDept = dept;
+    
+    m_editName->setText(dept.name);
+    m_editLocation->setText(dept.location);
+    m_editPhone->setText(dept.phone);
+    m_editDescription->setText(dept.description);
+    m_editWorkTime->setText(dept.workTime);
+    m_editDirector->setText(dept.director);
+    m_checkActive->setChecked(dept.isActive);
 }
 
-QString DepartmentEditDialog::getPhone() const
+DepartmentEditDialog::DepartmentInfo DepartmentEditDialog::getDepartmentInfo() const
 {
-    return m_editPhone->text();
+    DepartmentInfo dept = m_currentDept;
+    
+    dept.name = m_editName->text();
+    dept.location = m_editLocation->text();
+    dept.phone = m_editPhone->text();
+    dept.description = m_editDescription->toPlainText();
+    dept.workTime = m_editWorkTime->text();
+    dept.director = m_editDirector->text();
+    dept.isActive = m_checkActive->isChecked();
+    
+    return dept;
 }
 
-QString DepartmentEditDialog::getDescription() const
+bool DepartmentEditDialog::validateInput()
 {
-    return m_editDescription->toPlainText();
+    if (m_editName->text().trimmed().isEmpty()) {
+        QMessageBox::warning(this, "输入错误", "请输入科室名称！");
+        m_editName->setFocus();
+        return false;
+    }
+    
+    return true;
 }
 
-void DepartmentEditDialog::setDepartmentData(const QString& name, const QString& location, 
-                                            const QString& phone, const QString& description)
+void DepartmentEditDialog::onOkClicked()
 {
-    m_editName->setText(name);
-    m_editLocation->setText(location);
-    m_editPhone->setText(phone);
-    m_editDescription->setPlainText(description);
+    if (validateInput()) {
+        DepartmentInfo dept = getDepartmentInfo();
+        emit departmentSaved(dept);
+        accept();
+    }
+}
+
+void DepartmentEditDialog::onCancelClicked()
+{
+    reject();
 } 

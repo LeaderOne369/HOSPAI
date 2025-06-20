@@ -1067,7 +1067,27 @@ void ChatWidget::onSaveChatClicked()
 
 void ChatWidget::onSettingsClicked()
 {
-    QMessageBox::information(this, "设置", "设置功能正在开发中...");
+    SettingsDialog dialog("patient", this);
+    
+    // 连接设置变更信号
+    connect(&dialog, &SettingsDialog::settingsChanged, this, [this]() {
+        // 可以在这里处理设置变更后的逻辑，比如更新界面主题、字体等
+        qDebug() << "患者端设置已更新";
+        // 可以重新加载设置并应用到界面
+        loadUserSettings();
+    });
+    
+    connect(&dialog, &SettingsDialog::fontChanged, this, [this]() {
+        // 处理字体变更
+        updateChatFont();
+    });
+    
+    connect(&dialog, &SettingsDialog::themeChanged, this, [this]() {
+        // 处理主题变更
+        updateTheme();
+    });
+    
+    dialog.exec();
 }
 
 // 数据库相关方法的简单实现
@@ -1603,4 +1623,137 @@ QString ChatWidget::convertToRichText(const QString& plainText)
     richText.replace(QRegularExpression("([内外妇儿急皮眼耳口中][科医]*)："), "<span style='font-weight: bold; color: #007AFF;'>\\1：</span>");
     
     return richText;
+}
+
+// 设置相关方法实现
+void ChatWidget::loadUserSettings()
+{
+    QSettings settings("HospAI", "Settings");
+    
+    // 加载字体设置
+    QString fontStr = settings.value("chat/font", "Microsoft YaHei,12,-1,5,50,0,0,0,0,0").toString();
+    QFont chatFont;
+    chatFont.fromString(fontStr);
+    
+    // 应用字体到聊天区域
+    if (m_chatContainer) {
+        m_chatContainer->setFont(chatFont);
+    }
+    
+    // 加载其他设置
+    bool showTimestamp = settings.value("chat/showTimestamp", true).toBool();
+    // 可以根据需要处理时间戳显示设置
+    
+    qDebug() << "用户设置已加载";
+}
+
+void ChatWidget::updateChatFont()
+{
+    QSettings settings("HospAI", "Settings");
+    QString fontStr = settings.value("chat/font", "Microsoft YaHei,12,-1,5,50,0,0,0,0,0").toString();
+    QFont chatFont;
+    chatFont.fromString(fontStr);
+    
+    // 更新聊天区域字体
+    if (m_chatContainer) {
+        m_chatContainer->setFont(chatFont);
+        
+        // 更新所有现有消息的字体
+        QList<QWidget*> messageWidgets = m_chatContainer->findChildren<QWidget*>();
+        for (QWidget* widget : messageWidgets) {
+            widget->setFont(chatFont);
+        }
+    }
+    
+    // 更新输入框字体
+    if (m_messageInput) {
+        m_messageInput->setFont(chatFont);
+    }
+    if (m_richMessageInput) {
+        m_richMessageInput->setFont(chatFont);
+    }
+    
+    qDebug() << "聊天字体已更新";
+}
+
+void ChatWidget::updateTheme()
+{
+    QSettings settings("HospAI", "Settings");
+    QString theme = settings.value("general/theme", "浅色主题").toString();
+    
+    QString styleSheet;
+    if (theme == "深色主题") {
+        styleSheet = R"(
+            QWidget {
+                background-color: #2b2b2b;
+                color: #ffffff;
+            }
+            QTextEdit {
+                background-color: #3c3c3c;
+                border: 1px solid #555;
+                border-radius: 8px;
+                color: #ffffff;
+            }
+            QPushButton {
+                background-color: #0078d4;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px 16px;
+            }
+            QPushButton:hover {
+                background-color: #106ebe;
+            }
+        )";
+    } else if (theme == "护眼模式") {
+        styleSheet = R"(
+            QWidget {
+                background-color: #f5f5dc;
+                color: #2f4f4f;
+            }
+            QTextEdit {
+                background-color: #fafafa;
+                border: 1px solid #d3d3d3;
+                border-radius: 8px;
+                color: #2f4f4f;
+            }
+            QPushButton {
+                background-color: #8fbc8f;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px 16px;
+            }
+            QPushButton:hover {
+                background-color: #7ba07b;
+            }
+        )";
+    } else {
+        // 浅色主题（默认）
+        styleSheet = R"(
+            QWidget {
+                background-color: #ffffff;
+                color: #333333;
+            }
+            QTextEdit {
+                background-color: #ffffff;
+                border: 1px solid #e0e0e0;
+                border-radius: 8px;
+                color: #333333;
+            }
+            QPushButton {
+                background-color: #0078d4;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px 16px;
+            }
+            QPushButton:hover {
+                background-color: #106ebe;
+            }
+        )";
+    }
+    
+    setStyleSheet(styleSheet);
+    qDebug() << "主题已更新为:" << theme;
 } 
