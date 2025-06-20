@@ -9,7 +9,7 @@ RegisterDialog::RegisterDialog(QWidget *parent)
     : QDialog(parent)
 {
     setWindowTitle("HospAI - 注册账号");
-    setFixedSize(480, 700);
+    setFixedSize(675, 1000);
     setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground);
     
@@ -23,7 +23,7 @@ RegisterDialog::RegisterDialog(QWidget *parent)
 void RegisterDialog::setupUI()
 {
     m_mainLayout = new QVBoxLayout(this);
-    m_mainLayout->setContentsMargins(30, 30, 30, 30);
+    m_mainLayout->setContentsMargins(25, 25, 25, 25);  // 减少外边距
     
     // 滚动区域
     m_scrollArea = new QScrollArea;
@@ -36,8 +36,8 @@ void RegisterDialog::setupUI()
     m_registerFrame = new QFrame;
     m_registerFrame->setObjectName("registerFrame");
     m_frameLayout = new QVBoxLayout(m_registerFrame);
-    m_frameLayout->setContentsMargins(40, 40, 40, 40);
-    m_frameLayout->setSpacing(20);
+    m_frameLayout->setContentsMargins(35, 30, 35, 30);  // 优化内边距
+    m_frameLayout->setSpacing(15);  // 减少垂直间距
     
     // 标题区域
     m_titleLabel = new QLabel("创建账号");
@@ -52,8 +52,8 @@ void RegisterDialog::setupUI()
     m_inputFrame = new QFrame;
     m_inputFrame->setObjectName("inputFrame");
     m_inputLayout = new QGridLayout(m_inputFrame);
-    m_inputLayout->setSpacing(12);
-    m_inputLayout->setContentsMargins(25, 25, 25, 25);
+    m_inputLayout->setSpacing(10);  // 减少控件间距
+    m_inputLayout->setContentsMargins(20, 20, 20, 20);  // 减少输入区域内边距
     
     int row = 0;
     
@@ -142,7 +142,7 @@ void RegisterDialog::setupUI()
     m_passwordStrength->setRange(0, 100);
     m_passwordStrength->setValue(0);
     m_passwordStrength->setObjectName("passwordStrength");
-    m_passwordStrength->setFixedHeight(8);
+    m_passwordStrength->setFixedHeight(6);  // 减少密码强度条高度以节省空间
     
     m_passwordHint = new QLabel("至少6个字符，建议包含大小写字母、数字和特殊字符");
     m_passwordHint->setObjectName("hintLabel");
@@ -202,8 +202,9 @@ void RegisterDialog::setupUI()
     // 组装布局
     m_frameLayout->addWidget(m_titleLabel);
     m_frameLayout->addWidget(m_subtitleLabel);
-    m_frameLayout->addSpacing(10);
+    m_frameLayout->addSpacing(8);  // 减少标题后的间距
     m_frameLayout->addWidget(m_inputFrame);
+    m_frameLayout->addSpacing(5);  // 在输入区域和按钮间添加小间距
     m_frameLayout->addWidget(m_buttonFrame);
     m_frameLayout->addWidget(m_messageLabel);
     
