@@ -13,6 +13,7 @@
 #include <QProgressBar>
 #include <QTabWidget>
 #include <QTableWidget>
+#include "../../core/DatabaseManager.h"
 // 暂时移除Charts依赖，使用简单组件替代
 // #include <QtCharts/QChartView>
 // #include <QtCharts/QPieSeries>
@@ -31,6 +32,7 @@ class SystemStatsWidget : public QWidget
 
 public:
     explicit SystemStatsWidget(QWidget *parent = nullptr);
+    void setDatabaseManager(DatabaseManager* dbManager);
 
 private slots:
     void onDateRangeChanged();
@@ -51,6 +53,7 @@ private:
 
 private:
     QVBoxLayout* m_mainLayout;
+    DatabaseManager* m_dbManager;
     
     // 日期范围选择
     QGroupBox* m_dateGroup;

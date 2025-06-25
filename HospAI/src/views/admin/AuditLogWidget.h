@@ -14,6 +14,7 @@
 #include <QTextEdit>
 #include <QSplitter>
 #include <QTabWidget>
+#include "../../core/DatabaseManager.h"
 
 class AuditLogWidget : public QWidget
 {
@@ -21,6 +22,7 @@ class AuditLogWidget : public QWidget
 
 public:
     explicit AuditLogWidget(QWidget *parent = nullptr);
+    void setDatabaseManager(DatabaseManager* dbManager);
 
 private slots:
     void onSearchLogs();
@@ -42,6 +44,7 @@ private:
 
 private:
     QVBoxLayout* m_mainLayout;
+    DatabaseManager* m_dbManager;
     
     // 搜索筛选区域
     QGroupBox* m_searchGroup;

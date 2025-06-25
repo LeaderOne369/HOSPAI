@@ -9,6 +9,7 @@
 #include "RealChatWidget.h"
 #include "FAQWidget.h"
 #include "AppointmentWidget.h"
+#include "MapWidget.h"
 #include "../../core/DatabaseManager.h"
 
 class PatientMainWidget : public QWidget
@@ -34,6 +35,7 @@ private:
     RealChatWidget* m_realChatWidget;
     FAQWidget* m_faqWidget;
     AppointmentWidget* m_appointmentWidget;
+    MapWidget* m_mapWidget;
     
     UserInfo m_currentUser;
 };

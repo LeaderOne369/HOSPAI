@@ -108,6 +108,7 @@ private slots:
     // 搜索和选择
     void onSearchTextChanged();
     void onDepartmentSelected();
+    void onDepartmentDoubleClicked();
     void onFloorChanged();
     void onClearSelection();
     

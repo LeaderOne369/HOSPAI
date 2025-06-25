@@ -1,5 +1,7 @@
 #include "QuickReplyManageWidget.h"
 #include "../common/UIStyleManager.h"
+#include <QFileDialog>
+#include <QDateTime>
 
 QuickReplyManageWidget::QuickReplyManageWidget(QWidget *parent)
     : QWidget(parent)
@@ -113,14 +115,16 @@ void QuickReplyManageWidget::setupUI()
     
     // 连接信号槽
     connect(m_btnRefresh, &QPushButton::clicked, this, &QuickReplyManageWidget::onRefreshReplies);
-    connect(m_btnAdd, &QPushButton::clicked, [this]() { QMessageBox::information(this, "提示", "添加快捷回复功能待实现"); });
-    connect(m_btnEdit, &QPushButton::clicked, [this]() { QMessageBox::information(this, "提示", "编辑快捷回复功能待实现"); });
-    connect(m_btnDelete, &QPushButton::clicked, [this]() { QMessageBox::information(this, "提示", "删除快捷回复功能待实现"); });
-    connect(m_btnExport, &QPushButton::clicked, [this]() { QMessageBox::information(this, "提示", "导出快捷回复功能待实现"); });
-    connect(m_btnImport, &QPushButton::clicked, [this]() { QMessageBox::information(this, "提示", "导入快捷回复功能待实现"); });
-    connect(m_btnMoveUp, &QPushButton::clicked, [this]() { QMessageBox::information(this, "提示", "上移功能待实现"); });
-    connect(m_btnMoveDown, &QPushButton::clicked, [this]() { QMessageBox::information(this, "提示", "下移功能待实现"); });
+    connect(m_btnAdd, &QPushButton::clicked, this, &QuickReplyManageWidget::onAddReply);
+    connect(m_btnEdit, &QPushButton::clicked, this, &QuickReplyManageWidget::onEditReply);
+    connect(m_btnDelete, &QPushButton::clicked, this, &QuickReplyManageWidget::onDeleteReply);
+    connect(m_btnExport, &QPushButton::clicked, this, &QuickReplyManageWidget::onExportReplies);
+    connect(m_btnImport, &QPushButton::clicked, this, &QuickReplyManageWidget::onImportReplies);
+    connect(m_btnMoveUp, &QPushButton::clicked, this, &QuickReplyManageWidget::onMoveUp);
+    connect(m_btnMoveDown, &QPushButton::clicked, this, &QuickReplyManageWidget::onMoveDown);
     connect(m_btnSearch, &QPushButton::clicked, this, &QuickReplyManageWidget::onSearchReplies);
+    connect(m_replyTable, &QTableWidget::itemSelectionChanged, this, &QuickReplyManageWidget::onReplySelectionChanged);
+    connect(m_replyTable, &QTableWidget::itemDoubleClicked, [this]() { onEditReply(); });
 }
 
 void QuickReplyManageWidget::loadQuickReplies()
@@ -187,43 +191,294 @@ void QuickReplyManageWidget::onSearchReplies()
     }
 }
 
-// 其他槽函数的简化实现
-void QuickReplyManageWidget::onAddReply() { QMessageBox::information(this, "提示", "功能开发中..."); }
-void QuickReplyManageWidget::onEditReply() { QMessageBox::information(this, "提示", "功能开发中..."); }
-void QuickReplyManageWidget::onDeleteReply() { QMessageBox::information(this, "提示", "功能开发中..."); }
-void QuickReplyManageWidget::onReplySelectionChanged() { /* 暂时留空 */ }
-void QuickReplyManageWidget::onExportReplies() { QMessageBox::information(this, "提示", "功能开发中..."); }
-void QuickReplyManageWidget::onImportReplies() { QMessageBox::information(this, "提示", "功能开发中..."); }
-void QuickReplyManageWidget::onMoveUp() { QMessageBox::information(this, "提示", "功能开发中..."); }
-void QuickReplyManageWidget::onMoveDown() { QMessageBox::information(this, "提示", "功能开发中..."); }
-void QuickReplyManageWidget::showReplyDialog(const QuickReply& reply) { Q_UNUSED(reply); QMessageBox::information(this, "提示", "功能开发中..."); }
-void QuickReplyManageWidget::updateSortOrder() { /* 暂时留空 */ }
+void QuickReplyManageWidget::onAddReply()
+{
+    showReplyDialog();
+}
 
-// ========== QuickReplyEditDialog 简化实现 ==========
+void QuickReplyManageWidget::onEditReply()
+{
+    int currentRow = m_replyTable->currentRow();
+    if (currentRow < 0 || currentRow >= m_replies.size()) {
+        QMessageBox::warning(this, "提示", "请选择要编辑的快捷回复");
+        return;
+    }
+    
+    showReplyDialog(m_replies[currentRow]);
+}
+
+void QuickReplyManageWidget::onDeleteReply()
+{
+    int currentRow = m_replyTable->currentRow();
+    if (currentRow < 0 || currentRow >= m_replies.size()) {
+        QMessageBox::warning(this, "提示", "请选择要删除的快捷回复");
+        return;
+    }
+    
+    const QuickReply& reply = m_replies[currentRow];
+    
+    int ret = QMessageBox::question(this, "确认删除", 
+        QString("确定要删除快捷回复 \"%1\" 吗？").arg(reply.title),
+        QMessageBox::Yes | QMessageBox::No);
+    
+    if (ret == QMessageBox::Yes) {
+        if (m_dbManager && m_dbManager->deleteQuickReply(reply.id)) {
+            QMessageBox::information(this, "成功", "快捷回复删除成功");
+            loadQuickReplies();
+        } else {
+            QMessageBox::warning(this, "错误", "删除失败，请重试");
+        }
+    }
+}
+
+void QuickReplyManageWidget::onReplySelectionChanged()
+{
+    int currentRow = m_replyTable->currentRow();
+    bool hasSelection = currentRow >= 0 && currentRow < m_replies.size();
+    
+    m_btnEdit->setEnabled(hasSelection);
+    m_btnDelete->setEnabled(hasSelection);
+    m_btnMoveUp->setEnabled(hasSelection && currentRow > 0);
+    m_btnMoveDown->setEnabled(hasSelection && currentRow < m_replies.size() - 1);
+}
+
+void QuickReplyManageWidget::onExportReplies()
+{
+    QString fileName = QFileDialog::getSaveFileName(this, "导出快捷回复", 
+        QString("quick_replies_%1.json").arg(QDateTime::currentDateTime().toString("yyyyMMdd_hhmmss")),
+        "JSON文件 (*.json)");
+    
+    if (!fileName.isEmpty()) {
+        // 这里可以实现导出到JSON文件的功能
+        QMessageBox::information(this, "提示", "导出功能将在后续版本中实现");
+    }
+}
+
+void QuickReplyManageWidget::onImportReplies()
+{
+    QString fileName = QFileDialog::getOpenFileName(this, "导入快捷回复", 
+        "", "JSON文件 (*.json)");
+    
+    if (!fileName.isEmpty()) {
+        // 这里可以实现从JSON文件导入的功能
+        QMessageBox::information(this, "提示", "导入功能将在后续版本中实现");
+    }
+}
+
+void QuickReplyManageWidget::onMoveUp()
+{
+    int currentRow = m_replyTable->currentRow();
+    if (currentRow <= 0 || currentRow >= m_replies.size()) return;
+    
+    // 交换当前行和上一行的排序
+    QuickReply& current = m_replies[currentRow];
+    QuickReply& previous = m_replies[currentRow - 1];
+    
+    int tempOrder = current.sortOrder;
+    current.sortOrder = previous.sortOrder;
+    previous.sortOrder = tempOrder;
+    
+    // 更新数据库
+    if (m_dbManager) {
+        m_dbManager->updateQuickReply(current.id, current.title, current.content, current.category, current.sortOrder);
+        m_dbManager->updateQuickReply(previous.id, previous.title, previous.content, previous.category, previous.sortOrder);
+    }
+    
+    loadQuickReplies();
+    m_replyTable->selectRow(currentRow - 1);
+}
+
+void QuickReplyManageWidget::onMoveDown()
+{
+    int currentRow = m_replyTable->currentRow();
+    if (currentRow < 0 || currentRow >= m_replies.size() - 1) return;
+    
+    // 交换当前行和下一行的排序
+    QuickReply& current = m_replies[currentRow];
+    QuickReply& next = m_replies[currentRow + 1];
+    
+    int tempOrder = current.sortOrder;
+    current.sortOrder = next.sortOrder;
+    next.sortOrder = tempOrder;
+    
+    // 更新数据库
+    if (m_dbManager) {
+        m_dbManager->updateQuickReply(current.id, current.title, current.content, current.category, current.sortOrder);
+        m_dbManager->updateQuickReply(next.id, next.title, next.content, next.category, next.sortOrder);
+    }
+    
+    loadQuickReplies();
+    m_replyTable->selectRow(currentRow + 1);
+}
+
+void QuickReplyManageWidget::showReplyDialog(const QuickReply& reply)
+{
+    QuickReplyEditDialog dialog(reply, this);
+    if (dialog.exec() == QDialog::Accepted) {
+        QuickReply newReply = dialog.getQuickReply();
+        
+        bool success = false;
+        if (newReply.id > 0) {
+            // 编辑现有回复
+            success = m_dbManager && m_dbManager->updateQuickReply(
+                newReply.id, newReply.title, newReply.content, 
+                newReply.category, newReply.sortOrder);
+        } else {
+            // 添加新回复
+            success = m_dbManager && m_dbManager->addQuickReply(
+                newReply.title, newReply.content, newReply.category, 
+                m_replies.size() + 1);
+        }
+        
+        if (success) {
+            QMessageBox::information(this, "成功", 
+                newReply.id > 0 ? "快捷回复更新成功" : "快捷回复添加成功");
+            loadQuickReplies();
+        } else {
+            QMessageBox::warning(this, "错误", "操作失败，请重试");
+        }
+    }
+}
+
+void QuickReplyManageWidget::updateSortOrder()
+{
+    // 重新排序所有快捷回复
+    for (int i = 0; i < m_replies.size(); ++i) {
+        m_replies[i].sortOrder = i + 1;
+        if (m_dbManager) {
+            m_dbManager->updateQuickReply(m_replies[i].id, m_replies[i].title, 
+                m_replies[i].content, m_replies[i].category, m_replies[i].sortOrder);
+        }
+    }
+}
+
+// ========== QuickReplyEditDialog 完整实现 ==========
 
 QuickReplyEditDialog::QuickReplyEditDialog(const QuickReply& reply, QWidget *parent)
     : QDialog(parent)
     , m_originalReply(reply)
     , m_isEditing(reply.id > 0)
 {
-    setWindowTitle("快捷回复编辑对话框（开发中）");
-    resize(300, 200);
+    setWindowTitle(m_isEditing ? "编辑快捷回复" : "添加快捷回复");
+    resize(500, 400);
+    setupUI();
     
-    QVBoxLayout* layout = new QVBoxLayout(this);
-    layout->addWidget(new QLabel("快捷回复编辑功能正在开发中...", this));
-    
-    QPushButton* closeButton = new QPushButton("关闭", this);
-    connect(closeButton, &QPushButton::clicked, this, &QDialog::reject);
-    layout->addWidget(closeButton);
+    if (m_isEditing) {
+        // 填充现有数据
+        m_titleEdit->setText(reply.title);
+        m_contentEdit->setPlainText(reply.content);
+        m_categoryCombo->setCurrentText(reply.category);
+        m_sortSpin->setValue(reply.sortOrder);
+        m_statusCombo->setCurrentIndex(reply.isActive ? 0 : 1);
+    }
 }
 
-void QuickReplyEditDialog::setupUI() { /* 简化实现 */ }
-void QuickReplyEditDialog::onAccept() { accept(); }
-void QuickReplyEditDialog::onPreview() { QMessageBox::information(this, "预览", "预览功能开发中..."); }
+void QuickReplyEditDialog::setupUI()
+{
+    m_formLayout = new QFormLayout(this);
+    m_formLayout->setSpacing(12);
+    
+    // 标题输入
+    m_titleEdit = new QLineEdit(this);
+    m_titleEdit->setPlaceholderText("请输入快捷回复标题...");
+    m_formLayout->addRow("标题:", m_titleEdit);
+    
+    // 内容输入
+    m_contentEdit = new QTextEdit(this);
+    m_contentEdit->setPlaceholderText("请输入快捷回复内容...");
+    m_contentEdit->setMaximumHeight(150);
+    m_formLayout->addRow("内容:", m_contentEdit);
+    
+    // 分类选择
+    m_categoryCombo = new QComboBox(this);
+    m_categoryCombo->addItems({"问候语", "常见问题", "结束语", "其他"});
+    m_formLayout->addRow("分类:", m_categoryCombo);
+    
+    // 排序
+    m_sortSpin = new QSpinBox(this);
+    m_sortSpin->setRange(1, 999);
+    m_sortSpin->setValue(1);
+    m_formLayout->addRow("排序:", m_sortSpin);
+    
+    // 状态
+    m_statusCombo = new QComboBox(this);
+    m_statusCombo->addItems({"启用", "禁用"});
+    m_formLayout->addRow("状态:", m_statusCombo);
+    
+    // 按钮区域
+    QHBoxLayout* buttonLayout = new QHBoxLayout;
+    
+    m_previewButton = new QPushButton("预览", this);
+    m_okButton = new QPushButton("确定", this);
+    m_cancelButton = new QPushButton("取消", this);
+    
+    m_okButton->setDefault(true);
+    
+    buttonLayout->addWidget(m_previewButton);
+    buttonLayout->addStretch();
+    buttonLayout->addWidget(m_okButton);
+    buttonLayout->addWidget(m_cancelButton);
+    
+    m_formLayout->addRow(buttonLayout);
+    
+    // 连接信号
+    connect(m_previewButton, &QPushButton::clicked, this, &QuickReplyEditDialog::onPreview);
+    connect(m_okButton, &QPushButton::clicked, this, &QuickReplyEditDialog::onAccept);
+    connect(m_cancelButton, &QPushButton::clicked, this, &QDialog::reject);
+}
+
+void QuickReplyEditDialog::onAccept()
+{
+    QString title = m_titleEdit->text().trimmed();
+    QString content = m_contentEdit->toPlainText().trimmed();
+    
+    if (title.isEmpty()) {
+        QMessageBox::warning(this, "提示", "请输入标题");
+        m_titleEdit->setFocus();
+        return;
+    }
+    
+    if (content.isEmpty()) {
+        QMessageBox::warning(this, "提示", "请输入内容");
+        m_contentEdit->setFocus();
+        return;
+    }
+    
+    accept();
+}
+
+void QuickReplyEditDialog::onPreview()
+{
+    QString content = m_contentEdit->toPlainText();
+    if (content.isEmpty()) {
+        QMessageBox::information(this, "预览", "内容为空");
+        return;
+    }
+    
+    QMessageBox previewBox(this);
+    previewBox.setWindowTitle("快捷回复预览");
+    previewBox.setText(QString("标题: %1\n\n内容预览:").arg(m_titleEdit->text()));
+    previewBox.setDetailedText(content);
+    previewBox.setStandardButtons(QMessageBox::Ok);
+    previewBox.exec();
+}
 
 QuickReply QuickReplyEditDialog::getQuickReply() const
 {
-    return m_originalReply;
+    QuickReply reply = m_originalReply;
+    
+    reply.title = m_titleEdit->text().trimmed();
+    reply.content = m_contentEdit->toPlainText().trimmed();
+    reply.category = m_categoryCombo->currentText();
+    reply.sortOrder = m_sortSpin->value();
+    reply.isActive = (m_statusCombo->currentIndex() == 0);
+    reply.updatedAt = QDateTime::currentDateTime();
+    
+    if (!m_isEditing) {
+        reply.createdAt = QDateTime::currentDateTime();
+    }
+    
+    return reply;
 }
 
 // MOC generated automatically

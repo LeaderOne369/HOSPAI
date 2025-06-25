@@ -11,8 +11,17 @@
 SystemStatsWidget::SystemStatsWidget(QWidget *parent)
     : QWidget(parent)
     , m_mainLayout(nullptr)
+    , m_dbManager(nullptr)
 {
     setupUI();
+}
+
+void SystemStatsWidget::setDatabaseManager(DatabaseManager* dbManager)
+{
+    m_dbManager = dbManager;
+    // 设置数据库管理器后立即更新统计数据
+    updateOverviewStats();
+    updateUserStats();
 }
 
 void SystemStatsWidget::setupUI()
@@ -91,9 +100,9 @@ void SystemStatsWidget::setupOverviewTab()
     UIStyleManager::applyGroupBoxStyle(usersGroup);
     QVBoxLayout* usersLayout = new QVBoxLayout(usersGroup);
     
-    m_totalUsers = new QLabel("总用户数: <b>1,247</b>", this);
-    m_activeUsers = new QLabel("活跃用户: <b>892</b>", this);
-    m_totalChats = new QLabel("总对话数: <b>3,456</b>", this);
+    m_totalUsers = new QLabel("总用户数: <b>0</b>", this);
+    m_activeUsers = new QLabel("活跃用户: <b>0</b>", this);
+    m_totalChats = new QLabel("总对话数: <b>0</b>", this);
     
     UIStyleManager::applyLabelStyle(m_totalUsers, "normal");
     UIStyleManager::applyLabelStyle(m_activeUsers, "success");
@@ -183,21 +192,7 @@ void SystemStatsWidget::setupUserStatsTab()
     QStringList headers = {"角色", "总数", "活跃", "占比"};
     m_userStatsTable->setHorizontalHeaderLabels(headers);
     
-    m_userStatsTable->setRowCount(3);
-    m_userStatsTable->setItem(0, 0, new QTableWidgetItem("患者"));
-    m_userStatsTable->setItem(0, 1, new QTableWidgetItem("879"));
-    m_userStatsTable->setItem(0, 2, new QTableWidgetItem("623"));
-    m_userStatsTable->setItem(0, 3, new QTableWidgetItem("70.5%"));
-    
-    m_userStatsTable->setItem(1, 0, new QTableWidgetItem("客服"));
-    m_userStatsTable->setItem(1, 1, new QTableWidgetItem("314"));
-    m_userStatsTable->setItem(1, 2, new QTableWidgetItem("241"));
-    m_userStatsTable->setItem(1, 3, new QTableWidgetItem("25.2%"));
-    
-    m_userStatsTable->setItem(2, 0, new QTableWidgetItem("管理员"));
-    m_userStatsTable->setItem(2, 1, new QTableWidgetItem("54"));
-    m_userStatsTable->setItem(2, 2, new QTableWidgetItem("28"));
-    m_userStatsTable->setItem(2, 3, new QTableWidgetItem("4.3%"));
+    // 初始为空，将通过updateUserStats()方法填充真实数据
     
     m_userStatsTable->horizontalHeader()->setStretchLastSection(true);
     m_userStatsTable->setAlternatingRowColors(true);
@@ -302,25 +297,109 @@ void SystemStatsWidget::setupReportsTab()
 
 void SystemStatsWidget::updateOverviewStats()
 {
-    // 模拟实时数据更新
+    if (!m_dbManager) {
+        // 如果没有数据库管理器，使用模拟数据
+        static int counter = 0;
+        counter++;
+        
+        int sysLoad = 30 + (counter % 40);
+        int memUsage = 50 + (counter % 30);
+        
+        m_systemLoad->setValue(sysLoad);
+        m_memoryUsage->setValue(memUsage);
+        
+        m_totalUsers->setText(QString("总用户数: <b>%1</b>").arg(1247 + counter % 10));
+        m_activeUsers->setText(QString("活跃用户: <b>%1</b>").arg(892 + counter % 5));
+        return;
+    }
+    
+    // 获取真实的用户统计数据
+    QList<UserInfo> allUsers = m_dbManager->getAllUsers();
+    int totalUsers = allUsers.size();
+    
+    // 计算活跃用户（7天内登录的用户）
+    QDateTime sevenDaysAgo = QDateTime::currentDateTime().addDays(-7);
+    int activeUsers = 0;
+    for (const UserInfo& user : allUsers) {
+        if (user.lastLoginTime.isValid() && user.lastLoginTime > sevenDaysAgo) {
+            activeUsers++;
+        }
+    }
+    
+    // 获取聊天会话总数
+    QList<ChatSession> allSessions = m_dbManager->getActiveSessions();
+    int totalChats = allSessions.size();
+    
+    // 更新显示
+    m_totalUsers->setText(QString("总用户数: <b>%1</b>").arg(totalUsers));
+    m_activeUsers->setText(QString("活跃用户: <b>%1</b>").arg(activeUsers));
+    m_totalChats->setText(QString("总对话数: <b>%1</b>").arg(totalChats));
+    
+    // 模拟系统负载和内存使用的变化
     static int counter = 0;
     counter++;
-    
-    // 更新进度条
     int sysLoad = 30 + (counter % 40);
     int memUsage = 50 + (counter % 30);
     
     m_systemLoad->setValue(sysLoad);
     m_memoryUsage->setValue(memUsage);
-    
-    // 更新用户统计
-    m_totalUsers->setText(QString("总用户数: <b>%1</b>").arg(1247 + counter % 10));
-    m_activeUsers->setText(QString("活跃用户: <b>%1</b>").arg(892 + counter % 5));
 }
 
 void SystemStatsWidget::updateUserStats()
 {
-    // 更新用户统计数据
+    if (!m_dbManager) return;
+    
+    // 获取用户数据
+    QList<UserInfo> allUsers = m_dbManager->getAllUsers();
+    
+    // 按角色分类统计
+    QMap<QString, int> roleCounts;
+    QMap<QString, int> activeRoleCounts;
+    
+    QDateTime sevenDaysAgo = QDateTime::currentDateTime().addDays(-7);
+    
+    for (const UserInfo& user : allUsers) {
+        roleCounts[user.role]++;
+        if (user.lastLoginTime.isValid() && user.lastLoginTime > sevenDaysAgo) {
+            activeRoleCounts[user.role]++;
+        }
+    }
+    
+    int totalUsers = allUsers.size();
+    
+    // 更新饼图文本
+    QString pieText = "📊 用户角色分布\n\n";
+    QStringList roles = {"患者", "客服", "管理员"};
+    
+    for (const QString& role : roles) {
+        int count = roleCounts.value(role, 0);
+        int activeCount = activeRoleCounts.value(role, 0);
+        double percentage = totalUsers > 0 ? (count * 100.0 / totalUsers) : 0;
+        
+        QString emoji = "👥";
+        if (role == "客服") emoji = "🛎️";
+        else if (role == "管理员") emoji = "👑";
+        
+        pieText += QString("%1 %2: %3 人 (%4%)\n").arg(emoji, role).arg(count).arg(percentage, 0, 'f', 1);
+    }
+    pieText += QString("\n总计: %1 人").arg(totalUsers);
+    
+    m_userPieChart->setText(pieText);
+    
+    // 更新表格
+    m_userStatsTable->setRowCount(roles.size());
+    
+    for (int i = 0; i < roles.size(); ++i) {
+        const QString& role = roles[i];
+        int count = roleCounts.value(role, 0);
+        int activeCount = activeRoleCounts.value(role, 0);
+        double percentage = totalUsers > 0 ? (count * 100.0 / totalUsers) : 0;
+        
+        m_userStatsTable->setItem(i, 0, new QTableWidgetItem(role));
+        m_userStatsTable->setItem(i, 1, new QTableWidgetItem(QString::number(count)));
+        m_userStatsTable->setItem(i, 2, new QTableWidgetItem(QString::number(activeCount)));
+        m_userStatsTable->setItem(i, 3, new QTableWidgetItem(QString("%1%").arg(percentage, 0, 'f', 1)));
+    }
 }
 
 void SystemStatsWidget::updateSystemStats()
@@ -368,7 +447,10 @@ void SystemStatsWidget::onExportReport()
         QFile file(fileName);
         if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
             QTextStream out(&file);
-            out.setEncoding(QStringConverter::Utf8);
+            // Qt5/Qt6兼容性：在Qt6中setCodec已移除，默认使用UTF-8
+            #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+            out.setCodec("UTF-8");
+            #endif
             
             // 写入CSV头部
             out << "时间,用户,操作,结果,详情\n";

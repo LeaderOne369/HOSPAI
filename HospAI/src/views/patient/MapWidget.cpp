@@ -72,7 +72,7 @@ void HospitalMapWidget::showRoute(const QString& from, const QString& to)
     m_routeFrom = from;
     m_routeTo = to;
     
-    // 生成路径点（简化版，实际应该使用路径算法）
+    // 生成路径点（智能路径规划）
     if (m_departments.contains(from) && m_departments.contains(to)) {
         m_routePoints.clear();
         QRect fromRect = m_departments[from].mapRect;
@@ -81,9 +81,34 @@ void HospitalMapWidget::showRoute(const QString& from, const QString& to)
         QPoint start = fromRect.center();
         QPoint end = toRect.center();
         
-        // 简单的L型路径
-        QPoint middle(start.x(), end.y());
-        m_routePoints << start << middle << end;
+        // 根据楼层差异规划路径
+        QString fromFloor = m_departments[from].floor;
+        QString toFloor = m_departments[to].floor;
+        
+        if (fromFloor == toFloor) {
+            // 同楼层，直接连接或L型路径
+            if (abs(start.x() - end.x()) > abs(start.y() - end.y())) {
+                // 横向优先
+                QPoint middle(end.x(), start.y());
+                m_routePoints << start << middle << end;
+            } else {
+                // 纵向优先
+                QPoint middle(start.x(), end.y());
+                m_routePoints << start << middle << end;
+            }
+        } else {
+            // 跨楼层，经过电梯或楼梯
+            QPoint elevatorPoint(335, start.y()); // 电梯位置
+            QPoint elevatorEnd(335, end.y());
+            
+            // 路径：起点 -> 电梯入口 -> 电梯出口 -> 终点
+            m_routePoints << start;
+            m_routePoints << QPoint(start.x(), elevatorPoint.y());
+            m_routePoints << elevatorPoint;
+            m_routePoints << elevatorEnd;
+            m_routePoints << QPoint(end.x(), elevatorEnd.y());
+            m_routePoints << end;
+        }
         
         m_routeTimer->start();
     }
@@ -208,20 +233,56 @@ void HospitalMapWidget::drawBuildings(QPainter& painter)
     
     // 门诊楼标识
     painter.setPen(QPen(QColor("#007AFF"), 2));
-    painter.setFont(QFont("Arial", 16, QFont::Bold));
+    painter.setFont(QFont("Microsoft YaHei", 16, QFont::Bold));
     painter.drawText(60, 80, "门诊医技楼");
     
-    // 楼层分割线
+    // 楼层分割线和标识
     painter.setPen(QPen(QColor("#DEE2E6"), 1));
+    QStringList floors = {"5F", "4F", "3F", "2F", "1F"};
+    QStringList floorDesc = {"住院部", "专家门诊", "医技科室", "普通门诊", "急诊大厅"};
+    
     for (int floor = 1; floor <= 5; ++floor) {
         int y = 50 + floor * 100;
         painter.drawLine(50, y, 750, y);
         
         // 楼层标识
         painter.setPen(QColor("#6C757D"));
-        painter.setFont(QFont("Arial", 12));
-        painter.drawText(20, y - 50, QString("%1F").arg(6 - floor));
+        painter.setFont(QFont("Microsoft YaHei", 12, QFont::Bold));
+        painter.drawText(15, y - 50, floors[floor-1]);
+        
+        // 楼层描述
+        painter.setFont(QFont("Microsoft YaHei", 10));
+        painter.setPen(QColor("#8E8E93"));
+        painter.drawText(15, y - 30, floorDesc[floor-1]);
     }
+    
+    // 绘制电梯和楼梯
+    painter.setPen(QPen(QColor("#007AFF"), 2));
+    painter.setBrush(QColor("#E3F2FD"));
+    
+    // 电梯
+    QRect elevator(320, 80, 30, 420);
+    painter.drawRect(elevator);
+    painter.setPen(QColor("#007AFF"));
+    painter.setFont(QFont("Microsoft YaHei", 10, QFont::Bold));
+    painter.drawText(322, 295, "电梯");
+    
+    // 楼梯
+    QRect stairs(280, 80, 30, 420);
+    painter.setPen(QPen(QColor("#FF9800"), 2));
+    painter.setBrush(QColor("#FFF3E0"));
+    painter.drawRect(stairs);
+    painter.setPen(QColor("#FF9800"));
+    painter.drawText(282, 295, "楼梯");
+    
+    // 主入口标识
+    painter.setPen(QPen(QColor("#28A745"), 3));
+    painter.setBrush(QColor("#D4EDDA"));
+    QRect entrance(350, 530, 150, 20);
+    painter.drawRect(entrance);
+    painter.setPen(QColor("#28A745"));
+    painter.setFont(QFont("Microsoft YaHei", 12, QFont::Bold));
+    painter.drawText(380, 545, "🚪 主入口");
 }
 
 void HospitalMapWidget::drawDepartments(QPainter& painter)
@@ -265,7 +326,21 @@ void HospitalMapWidget::drawRoute(QPainter& painter)
 {
     if (m_routePoints.size() < 2) return;
     
-    // 绘制路径
+    // 计算动画偏移
+    double animationOffset = m_routeAnimationStep * 10.0;
+    
+    // 绘制路径背景（阴影效果）
+    painter.setPen(QPen(QColor("#000000"), 6, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    painter.setOpacity(0.2);
+    for (int i = 0; i < m_routePoints.size() - 1; ++i) {
+        QPoint start = m_routePoints[i];
+        QPoint end = m_routePoints[i + 1];
+        painter.drawLine(start.x() + 2, start.y() + 2, end.x() + 2, end.y() + 2);
+    }
+    
+    painter.setOpacity(1.0);
+    
+    // 绘制主路径
     painter.setPen(QPen(QColor("#FF6B6B"), 4, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
     
     for (int i = 0; i < m_routePoints.size() - 1; ++i) {
@@ -273,28 +348,65 @@ void HospitalMapWidget::drawRoute(QPainter& painter)
         QPoint end = m_routePoints[i + 1];
         painter.drawLine(start, end);
         
-        // 绘制箭头
+        // 绘制方向箭头
         QVector2D direction(end - start);
-        direction.normalize();
-        QVector2D perpendicular(-direction.y(), direction.x());
-        
-        QPoint arrowHead = end - QPoint(direction.x() * 20, direction.y() * 20);
-        QPoint arrowLeft = arrowHead + QPoint(perpendicular.x() * 8, perpendicular.y() * 8);
-        QPoint arrowRight = arrowHead - QPoint(perpendicular.x() * 8, perpendicular.y() * 8);
-        
-        QPolygon arrow;
-        arrow << end << arrowLeft << arrowRight;
-        painter.setBrush(QColor("#FF6B6B"));
-        painter.drawPolygon(arrow);
+        if (direction.length() > 0) {
+            direction.normalize();
+            QVector2D perpendicular(-direction.y(), direction.x());
+            
+            QPoint arrowHead = end - QPoint(direction.x() * 15, direction.y() * 15);
+            QPoint arrowLeft = arrowHead + QPoint(perpendicular.x() * 6, perpendicular.y() * 6);
+            QPoint arrowRight = arrowHead - QPoint(perpendicular.x() * 6, perpendicular.y() * 6);
+            
+            QPolygon arrow;
+            arrow << end << arrowLeft << arrowRight;
+            painter.setBrush(QColor("#FF6B6B"));
+            painter.drawPolygon(arrow);
+        }
     }
     
-    // 绘制起点和终点标记
+    // 绘制动画流水线效果
+    painter.setPen(QPen(QColor("#FFFFFF"), 2, Qt::DashLine));
+    QPen pen = painter.pen();
+    pen.setDashOffset(animationOffset);
+    painter.setPen(pen);
+    
+    for (int i = 0; i < m_routePoints.size() - 1; ++i) {
+        QPoint start = m_routePoints[i];
+        QPoint end = m_routePoints[i + 1];
+        painter.drawLine(start, end);
+    }
+    
+    // 绘制起点标记
     if (!m_routePoints.isEmpty()) {
+        QPoint startPoint = m_routePoints.first();
+        painter.setPen(QPen(QColor("#28A745"), 2));
         painter.setBrush(QColor("#28A745"));
-        painter.drawEllipse(m_routePoints.first(), 8, 8);
+        painter.drawEllipse(startPoint.x() - 10, startPoint.y() - 10, 20, 20);
         
+        painter.setPen(QColor("#FFFFFF"));
+        painter.setFont(QFont("Microsoft YaHei", 10, QFont::Bold));
+        painter.drawText(startPoint.x() - 5, startPoint.y() + 3, "起");
+    }
+    
+    // 绘制终点标记
+    if (!m_routePoints.isEmpty()) {
+        QPoint endPoint = m_routePoints.last();
+        painter.setPen(QPen(QColor("#DC3545"), 2));
         painter.setBrush(QColor("#DC3545"));
-        painter.drawEllipse(m_routePoints.last(), 8, 8);
+        painter.drawEllipse(endPoint.x() - 10, endPoint.y() - 10, 20, 20);
+        
+        painter.setPen(QColor("#FFFFFF"));
+        painter.setFont(QFont("Microsoft YaHei", 10, QFont::Bold));
+        painter.drawText(endPoint.x() - 5, endPoint.y() + 3, "终");
+    }
+    
+    // 绘制路径节点
+    painter.setPen(QPen(QColor("#007AFF"), 2));
+    painter.setBrush(QColor("#007AFF"));
+    for (int i = 1; i < m_routePoints.size() - 1; ++i) {
+        QPoint point = m_routePoints[i];
+        painter.drawEllipse(point.x() - 4, point.y() - 4, 8, 8);
     }
 }
 
@@ -443,6 +555,7 @@ void MapWidget::setupLeftPanel()
     connect(m_floorCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &MapWidget::onFloorChanged);
     connect(m_departmentList, &QListWidget::itemClicked, this, &MapWidget::onDepartmentSelected);
+    connect(m_departmentList, &QListWidget::itemDoubleClicked, this, &MapWidget::onDepartmentDoubleClicked);
     
     // 快捷按钮连接
     connect(m_btnEmergency, &QPushButton::clicked, [this]() {
@@ -866,6 +979,15 @@ void MapWidget::onDepartmentSelected()
     }
 }
 
+void MapWidget::onDepartmentDoubleClicked()
+{
+    QListWidgetItem* item = m_departmentList->currentItem();
+    if (item) {
+        QString departmentName = item->data(Qt::UserRole).toString();
+        showLocationDetails(departmentName);
+    }
+}
+
 void MapWidget::onFloorChanged()
 {
     updateDepartmentList();
@@ -930,38 +1052,186 @@ void MapWidget::onGetRoute()
 // 占位方法实现
 void MapWidget::onMapRouteRequested(const QString& from, const QString& to) 
 {
-    Q_UNUSED(from)
-    Q_UNUSED(to)
+    if (m_departments.contains(from) && m_departments.contains(to)) {
+        // 计算并显示路径
+        showRoute(from, to);
+        
+        // 更新信息面板显示路径信息
+        QString routeInfo = QString("🗺️ 路径规划\n\n从: %1\n到: %2\n\n导航说明:\n1. 从 %3 出发\n2. 沿主走廊前行\n3. 到达 %4")
+                           .arg(from, to, m_departments[from].location, m_departments[to].location);
+        
+        m_infoTitle->setText("路径导航");
+        m_infoContent->setText(routeInfo);
+    }
 }
 
 void MapWidget::onShowEmergencyRoute() 
 {
     highlightDepartment("急诊科");
     m_mapWidget->showRoute("门诊大厅", "急诊科");
+    
+    // 显示紧急路线详情
+    QString emergencyInfo = "🚨 紧急路线\n\n目标: 急诊科\n楼层: 1楼东侧\n\n快速导航:\n1. 从正门进入门诊大厅\n2. 右转走主走廊\n3. 直行至东侧急诊科\n\n⚠️ 急诊科24小时开放\n📞 急救电话: 120";
+    m_infoTitle->setText("🚨 急诊科导航");
+    m_infoContent->setText(emergencyInfo);
+    m_btnShowRoute->setEnabled(true);
 }
 
-void MapWidget::updateRouteAnimation() { }
+void MapWidget::updateRouteAnimation() 
+{
+    // 更新路径动画显示
+    if (m_mapWidget && !m_selectedDepartment.isEmpty()) {
+        m_mapWidget->update(); // 触发重绘以更新动画
+    }
+}
+
 void MapWidget::showLocationDetails(const QString& departmentName) 
 {
-    Q_UNUSED(departmentName)
+    if (!m_departments.contains(departmentName)) return;
+    
+    const DepartmentInfo& info = m_departments[departmentName];
+    
+    // 创建详细信息对话框
+    QDialog* detailDialog = new QDialog(this);
+    detailDialog->setWindowTitle(QString("%1 - 详细信息").arg(info.name));
+    detailDialog->setFixedSize(400, 500);
+    detailDialog->setAttribute(Qt::WA_DeleteOnClose);
+    
+    QVBoxLayout* layout = new QVBoxLayout(detailDialog);
+    
+    // 标题
+    QLabel* titleLabel = new QLabel(info.name);
+    titleLabel->setStyleSheet("font-size: 18px; font-weight: bold; color: #007AFF; margin: 10px 0;");
+    layout->addWidget(titleLabel);
+    
+    // 基本信息
+    QGroupBox* basicGroup = new QGroupBox("📋 基本信息");
+    QVBoxLayout* basicLayout = new QVBoxLayout(basicGroup);
+    
+    QLabel* locationLabel = new QLabel(QString("📍 位置: %1").arg(info.location));
+    QLabel* floorLabel = new QLabel(QString("🏢 楼层: %1").arg(info.floor));
+    QLabel* hoursLabel = new QLabel(QString("⏰ 开放时间: %1").arg(info.hours));
+    QLabel* phoneLabel = new QLabel(QString("📞 联系电话: %1").arg(info.phone));
+    
+    basicLayout->addWidget(locationLabel);
+    basicLayout->addWidget(floorLabel);
+    basicLayout->addWidget(hoursLabel);
+    basicLayout->addWidget(phoneLabel);
+    layout->addWidget(basicGroup);
+    
+    // 服务说明
+    QGroupBox* serviceGroup = new QGroupBox("ℹ️ 服务说明");
+    QVBoxLayout* serviceLayout = new QVBoxLayout(serviceGroup);
+    
+    QLabel* descLabel = new QLabel(info.description);
+    descLabel->setWordWrap(true);
+    serviceLayout->addWidget(descLabel);
+    layout->addWidget(serviceGroup);
+    
+    // 导航信息
+    QGroupBox* navGroup = new QGroupBox("🗺️ 导航信息");
+    QVBoxLayout* navLayout = new QVBoxLayout(navGroup);
+    
+    QString navInfo;
+    if (info.floor == "1楼") {
+        navInfo = "1. 从正门进入门诊大厅\n2. 根据科室位置指示前往\n3. 寻找对应科室标识";
+    } else if (info.floor == "2楼") {
+        navInfo = "1. 从正门进入门诊大厅\n2. 乘坐电梯或楼梯至2楼\n3. 根据楼层平面图找到科室";
+    } else if (info.floor == "3楼") {
+        navInfo = "1. 从正门进入门诊大厅\n2. 乘坐电梯或楼梯至3楼\n3. 根据楼层平面图找到科室";
+    } else if (info.floor == "地下") {
+        navInfo = "1. 从地面入口进入\n2. 乘坐电梯至地下层\n3. 按照停车场指示标识";
+    }
+    
+    QLabel* navLabel = new QLabel(navInfo);
+    navLabel->setWordWrap(true);
+    navLayout->addWidget(navLabel);
+    layout->addWidget(navGroup);
+    
+    // 按钮区域
+    QHBoxLayout* buttonLayout = new QHBoxLayout;
+    QPushButton* showRouteBtn = new QPushButton("🗺️ 显示路线");
+    QPushButton* closeBtn = new QPushButton("关闭");
+    
+    buttonLayout->addWidget(showRouteBtn);
+    buttonLayout->addWidget(closeBtn);
+    layout->addLayout(buttonLayout);
+    
+    // 连接信号
+    connect(showRouteBtn, &QPushButton::clicked, [this, departmentName, detailDialog]() {
+        highlightDepartment(departmentName);
+        m_mapWidget->showRoute("门诊大厅", departmentName);
+        detailDialog->close();
+    });
+    
+    connect(closeBtn, &QPushButton::clicked, detailDialog, &QDialog::close);
+    
+    // 应用样式
+    basicGroup->setStyleSheet("QGroupBox { font-weight: bold; border: 1px solid #D1D1D6; border-radius: 8px; margin: 5px 0; padding: 10px; }");
+    serviceGroup->setStyleSheet("QGroupBox { font-weight: bold; border: 1px solid #D1D1D6; border-radius: 8px; margin: 5px 0; padding: 10px; }");
+    navGroup->setStyleSheet("QGroupBox { font-weight: bold; border: 1px solid #D1D1D6; border-radius: 8px; margin: 5px 0; padding: 10px; }");
+    
+    detailDialog->show();
 }
 
 void MapWidget::filterDepartments(const QString& keyword) 
 {
-    Q_UNUSED(keyword)
+    m_searchEdit->setText(keyword);
+    updateDepartmentList();
 }
 
 void MapWidget::showRoute(const QString& from, const QString& to) 
 {
-    Q_UNUSED(from)
-    Q_UNUSED(to)
+    if (m_departments.contains(from) && m_departments.contains(to)) {
+        m_mapWidget->showRoute(from, to);
+        
+        // 更新路线状态
+        m_routeStart = from;
+        m_routeEnd = to;
+        m_isRouteMode = true;
+        
+        // 启动路线动画
+        updateRouteAnimation();
+    }
 }
 
-void MapWidget::updateMapDisplay() { }
+void MapWidget::updateMapDisplay() 
+{
+    if (m_mapWidget) {
+        m_mapWidget->update();
+    }
+}
+
 QStringList MapWidget::searchDepartments(const QString& keyword) const 
 {
-    Q_UNUSED(keyword)
-    return QStringList();
+    QStringList results;
+    
+    for (auto it = m_departments.begin(); it != m_departments.end(); ++it) {
+        const QString& name = it.key();
+        const DepartmentInfo& info = it.value();
+        
+        if (name.contains(keyword, Qt::CaseInsensitive) ||
+            info.description.contains(keyword, Qt::CaseInsensitive) ||
+            info.location.contains(keyword, Qt::CaseInsensitive)) {
+            results << name;
+        }
+    }
+    
+    return results;
 }
 
-void MapWidget::loadFloorData() { } 
+void MapWidget::loadFloorData() 
+{
+    // 重新组织楼层数据
+    m_floorDepartments.clear();
+    
+    for (auto it = m_departments.begin(); it != m_departments.end(); ++it) {
+        const QString& name = it.key();
+        const DepartmentInfo& info = it.value();
+        
+        if (!m_floorDepartments.contains(info.floor)) {
+            m_floorDepartments[info.floor] = QStringList();
+        }
+        m_floorDepartments[info.floor].append(name);
+    }
+} 

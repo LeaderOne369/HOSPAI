@@ -1510,26 +1510,45 @@ void StaffChatManager::setupQuickReplyButtons()
         delete child;
     }
     
-    // 预设快捷回复内容
-    QStringList quickReplies = {
-        "您好，我是客服，有什么可以帮助您的吗？",
-        "请稍等，我来为您查询一下",
-        "感谢您的耐心等待",
-        "您的问题我已经记录，会尽快处理",
-        "如还有其他问题，随时联系我们",
-        "祝您身体健康！"
-    };
+    // 从数据库获取活跃的快捷回复
+    QList<QuickReply> quickReplies;
+    if (m_dbManager) {
+        quickReplies = m_dbManager->getActiveQuickReplies();
+    }
     
-    for (const QString& reply : quickReplies) {
+    // 如果数据库中没有数据，使用默认的快捷回复
+    if (quickReplies.isEmpty()) {
+        QStringList defaultReplies = {
+            "您好，我是客服，有什么可以帮助您的吗？",
+            "请稍等，我来为您查询一下",
+            "感谢您的耐心等待",
+            "您的问题我已经记录，会尽快处理",
+            "如还有其他问题，随时联系我们",
+            "祝您身体健康！"
+        };
+        
+        for (const QString& reply : defaultReplies) {
+            QuickReply quickReply;
+            quickReply.title = reply.left(10);
+            quickReply.content = reply;
+            quickReplies.append(quickReply);
+        }
+    }
+    
+    // 最多显示6个快捷回复按钮
+    int maxButtons = qMin(6, quickReplies.size());
+    
+    for (int i = 0; i < maxButtons; ++i) {
+        const QuickReply& reply = quickReplies[i];
         QPushButton* button = new QPushButton(this);
         
         // 截取前10个字符作为按钮文本
-        QString buttonText = reply.left(10);
-        if (reply.length() > 10) {
-            buttonText += "...";
+        QString buttonText = reply.title.isEmpty() ? reply.content.left(10) : reply.title;
+        if (buttonText.length() > 10) {
+            buttonText = buttonText.left(10) + "...";
         }
         button->setText(buttonText);
-        button->setToolTip(reply); // 完整内容作为提示
+        button->setToolTip(reply.content); // 完整内容作为提示
         button->setMaximumWidth(120);
         button->setMaximumHeight(30);
         
@@ -1554,7 +1573,7 @@ void StaffChatManager::setupQuickReplyButtons()
         
         // 连接点击事件
         connect(button, &QPushButton::clicked, this, [this, reply]() {
-            onQuickReplyClicked(reply);
+            onQuickReplyClicked(reply.content);
         });
         
         m_quickReplyLayout->addWidget(button);

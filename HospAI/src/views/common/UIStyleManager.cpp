@@ -308,12 +308,13 @@ void UIStyleManager::setupFonts()
     fontFamilies = {"PingFang SC", "Helvetica Neue", "San Francisco", "Arial", "sans-serif"};
 #else
     // Linux/Ubuntu 字体优先级
-    fontFamilies = {"Ubuntu", "Noto Sans CJK SC", "Source Han Sans SC", 
-                    "WenQuanYi Micro Hei", "DejaVu Sans", "Liberation Sans", "Arial", "sans-serif"};
+    fontFamilies = QStringList({"Ubuntu", "Noto Sans CJK SC", "Source Han Sans SC", 
+                    "WenQuanYi Micro Hei", "DejaVu Sans", "Liberation Sans", "Arial", "sans-serif"});
 #endif
     
     for (const QString &family : fontFamilies) {
-        if (QFontDatabase::families().contains(family)) {
+        QFontDatabase db;
+        if (db.families().contains(family)) {
             defaultFont.setFamily(family);
             qDebug() << "选择字体:" << family << "平台:" << QSysInfo::productType();
             break;

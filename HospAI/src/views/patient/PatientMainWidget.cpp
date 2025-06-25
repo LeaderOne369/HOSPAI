@@ -65,12 +65,14 @@ void PatientMainWidget::setupUI()
     m_realChatWidget = new RealChatWidget;  // 真人客服
     m_faqWidget = new FAQWidget;
     m_appointmentWidget = new AppointmentWidget;
+    m_mapWidget = new MapWidget;           // 地图导航
     
     // 添加选项卡
     m_tabWidget->addTab(m_chatWidget, "🤖 智能分诊");
     m_tabWidget->addTab(m_realChatWidget, "💬 客服咨询");
     m_tabWidget->addTab(m_faqWidget, "❓ 常见问题");
     m_tabWidget->addTab(m_appointmentWidget, "📅 预约挂号");
+    m_tabWidget->addTab(m_mapWidget, "🗺️ 院内导航");
     
     // 连接转人工信号
     connect(m_chatWidget, &ChatWidget::requestHumanService,

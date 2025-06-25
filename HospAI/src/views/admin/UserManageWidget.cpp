@@ -351,7 +351,10 @@ void UserManageWidget::onExportUsers()
         QFile file(fileName);
         if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
             QTextStream out(&file);
-            out.setEncoding(QStringConverter::Utf8);
+            // Qt5/Qt6兼容性：在Qt6中setCodec已移除，默认使用UTF-8
+            #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+            out.setCodec("UTF-8");
+            #endif
             
             // 写入表头
             out << "用户ID,姓名,角色,状态,最后登录\n";

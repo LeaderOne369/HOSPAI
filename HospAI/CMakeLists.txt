@@ -31,6 +31,7 @@ set(PROJECT_SOURCES
         src/views/patient/SessionRatingDialog.cpp
         src/views/patient/FAQWidget.cpp
         src/views/patient/AppointmentWidget.cpp
+        src/views/patient/MapWidget.cpp
         src/views/patient/PatientMainWidget.cpp
         
         # Staff view components

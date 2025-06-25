@@ -8,6 +8,7 @@
 #include <QStandardPaths>
 #include <QDir>
 #include <QPushButton>
+#include <cmath>
 
 // HospitalGraphicsView 实现
 HospitalGraphicsView::HospitalGraphicsView(QWidget *parent)
@@ -370,7 +371,7 @@ void HospitalNavigationWidget::drawNavigationPath(const QList<QPointF> &pathPoin
         QPointF start = pathPoints[i];
         QPointF end = pathPoints[i + 1];
         QPointF direction = end - start;
-        qreal length = qSqrt(direction.x() * direction.x() + direction.y() * direction.y());
+        qreal length = sqrt(direction.x() * direction.x() + direction.y() * direction.y());
         if (length > 0) {
             direction /= length;
             QPointF arrowPos = start + direction * (length * 0.5);

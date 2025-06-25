@@ -30,6 +30,12 @@ void AdminMainWidget::setDatabaseManager(DatabaseManager* dbManager)
     if (m_staffRatingWidget) {
         m_staffRatingWidget->setDatabaseManager(dbManager);
     }
+    if (m_systemStatsWidget) {
+        m_systemStatsWidget->setDatabaseManager(dbManager);
+    }
+    if (m_auditLogWidget) {
+        m_auditLogWidget->setDatabaseManager(dbManager);
+    }
 }
 
 void AdminMainWidget::setupUI()
