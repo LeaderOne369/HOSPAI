@@ -256,9 +256,10 @@ bool DatabaseManager::loginUser(const QString& username, const QString& password
     query.prepare(R"(
         SELECT id, username, email, phone, role, real_name, created_at, last_login, status, avatar_path, password_hash
         FROM users 
-        WHERE username = ? AND status = 1
+        WHERE (username = ? OR email = ?) AND status = 1
     )");
     
+    query.addBindValue(username);
     query.addBindValue(username);
     
     if (!query.exec()) {

@@ -4,6 +4,7 @@
 #include <QMessageBox>
 #include <QKeyEvent>
 #include <QTimer>
+#include <QRegularExpression>
 
 LoginDialog::LoginDialog(QWidget *parent)
     : QDialog(parent)
@@ -126,7 +127,7 @@ void LoginDialog::onLoginClicked()
         connect(closeTimer, &QTimer::timeout, this, &QDialog::accept);
         closeTimer->start(1000);
     } else {
-        showMessage("用户名或密码错误！", true);
+        showMessage("用户名/邮箱或密码错误！", true);
     }
 }
 
@@ -158,11 +159,11 @@ void LoginDialog::onRoleChanged()
     // 可以根据角色预设一些默认用户名提示
     QString role = ui->roleCombo->currentData().toString();
     if (role == "管理员") {
-        ui->usernameEdit->setPlaceholderText("请输入管理员账号");
+        ui->usernameEdit->setPlaceholderText("请输入管理员账号或邮箱");
     } else if (role == "客服") {
-        ui->usernameEdit->setPlaceholderText("请输入客服工号");
+        ui->usernameEdit->setPlaceholderText("请输入客服工号或邮箱");
     } else {
-        ui->usernameEdit->setPlaceholderText("请输入用户名或手机号");
+        ui->usernameEdit->setPlaceholderText("请输入用户名、邮箱或手机号");
     }
 }
 
@@ -190,7 +191,7 @@ bool LoginDialog::validateInput()
     QString password = ui->passwordEdit->text();
     
     if (username.isEmpty()) {
-        showMessage("请输入用户名！", true);
+        showMessage("请输入用户名或邮箱！", true);
         ui->usernameEdit->setFocus();
         return false;
     }
@@ -201,10 +202,21 @@ bool LoginDialog::validateInput()
         return false;
     }
     
-    if (username.length() < 3) {
+    // 对于邮箱登录，不需要严格的长度检查，只对明显的用户名进行检查
+    if (!username.contains("@") && username.length() < 3) {
         showMessage("用户名至少需要3个字符！", true);
         ui->usernameEdit->setFocus();
         return false;
+    }
+    
+    // 如果是邮箱格式，进行简单的邮箱格式检查
+    if (username.contains("@")) {
+        QRegularExpression emailRegex("^[\\w\\.-]+@[\\w\\.-]+\\.[a-zA-Z]{2,}$");
+        if (!emailRegex.match(username).hasMatch()) {
+            showMessage("请输入有效的邮箱格式！", true);
+            ui->usernameEdit->setFocus();
+            return false;
+        }
     }
     
     if (password.length() < 6) {
