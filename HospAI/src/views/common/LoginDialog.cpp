@@ -75,10 +75,13 @@ void LoginDialog::showEvent(QShowEvent *event)
     QDialog::showEvent(event);
     
     // 确保输入框能正确获得焦点
-    QTimer::singleShot(100, this, [this]() {
+    QTimer* focusTimer = new QTimer(this);
+    focusTimer->setSingleShot(true);
+    connect(focusTimer, &QTimer::timeout, this, [this]() {
         ui->usernameEdit->setFocus();
         ui->usernameEdit->activateWindow();
     });
+    focusTimer->start(100);
     
     // 入场动画
     if (ui->loginFrame && m_frameAnimation) {
@@ -118,7 +121,10 @@ void LoginDialog::onLoginClicked()
         showMessage("登录成功！正在跳转...", false);
         
         // 延迟关闭对话框，让用户看到成功消息
-        QTimer::singleShot(1000, this, &QDialog::accept);
+        QTimer* closeTimer = new QTimer(this);
+        closeTimer->setSingleShot(true);
+        connect(closeTimer, &QTimer::timeout, this, &QDialog::accept);
+        closeTimer->start(1000);
     } else {
         showMessage("用户名或密码错误！", true);
     }
