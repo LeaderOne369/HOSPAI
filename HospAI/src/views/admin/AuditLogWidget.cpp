@@ -4,6 +4,11 @@
 #include <QMessageBox>
 #include <QDateTime>
 #include <algorithm>
+#include <QFileDialog>
+#include <QTextStream>
+#include <QDate>
+#include <QFile>
+#include <QStringConverter>
 
 AuditLogWidget::AuditLogWidget(QWidget *parent)
     : QWidget(parent)
@@ -466,7 +471,81 @@ void AuditLogWidget::onClearLogs()
 
 void AuditLogWidget::onExportLogs()
 {
-    QMessageBox::information(this, "导出日志", "日志导出功能将在后续版本中实现");
+    QString fileName = QFileDialog::getSaveFileName(this,
+                                                   "导出审计日志",
+                                                   QString("audit_logs_%1.csv").arg(QDate::currentDate().toString("yyyyMMdd")),
+                                                   "CSV文件 (*.csv)");
+    
+    if (!fileName.isEmpty()) {
+        QFile file(fileName);
+        if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+                         QTextStream stream(&file);
+             stream.setEncoding(QStringConverter::Utf8);
+            
+            int currentTab = m_tabWidget->currentIndex();
+            QTableWidget* currentTable = nullptr;
+            QString tabName;
+            
+            switch (currentTab) {
+            case 0:
+                currentTable = m_operationTable;
+                tabName = "操作日志";
+                stream << "时间,用户,操作,结果,IP地址\n";
+                break;
+            case 1:
+                currentTable = m_chatTable;
+                tabName = "聊天日志";
+                stream << "时间,发送者,接收者,消息摘要\n";
+                break;
+            case 2:
+                currentTable = m_systemTable;
+                tabName = "系统日志";
+                stream << "时间,级别,模块,消息\n";
+                break;
+            default:
+                QMessageBox::warning(this, "导出失败", "请先选择要导出的日志类型！");
+                file.close();
+                return;
+            }
+            
+            if (currentTable) {
+                // 写入数据
+                for (int row = 0; row < currentTable->rowCount(); ++row) {
+                    QStringList rowData;
+                    for (int col = 0; col < currentTable->columnCount(); ++col) {
+                        QTableWidgetItem* item = currentTable->item(row, col);
+                        QString cellData = item ? item->text() : "";
+                        
+                        // CSV转义：如果包含逗号、引号或换行符，需要用引号包围
+                        if (cellData.contains(',') || cellData.contains('"') || cellData.contains('\n')) {
+                            cellData.replace("\"", "\"\""); // 转义引号
+                            cellData = "\"" + cellData + "\"";
+                        }
+                        rowData.append(cellData);
+                    }
+                    stream << rowData.join(",") << "\n";
+                }
+                
+                // 添加导出信息
+                stream << "\n";
+                stream << QString("# 导出信息：%1").arg(tabName) << "\n";
+                stream << QString("# 导出时间：%1").arg(QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss")) << "\n";
+                stream << QString("# 记录数量：%1").arg(currentTable->rowCount()) << "\n";
+                stream << QString("# 时间范围：%1 至 %2").arg(
+                    m_startTime->dateTime().toString("yyyy-MM-dd hh:mm:ss"),
+                    m_endTime->dateTime().toString("yyyy-MM-dd hh:mm:ss")
+                ) << "\n";
+                
+                file.close();
+                QMessageBox::information(this, "导出成功", QString("%1已导出到：%2").arg(tabName).arg(fileName));
+            } else {
+                file.close();
+                QMessageBox::critical(this, "导出失败", "无法获取日志数据！");
+            }
+        } else {
+            QMessageBox::critical(this, "导出失败", "无法创建导出文件！");
+        }
+    }
 }
 
 void AuditLogWidget::onRefreshLogs()

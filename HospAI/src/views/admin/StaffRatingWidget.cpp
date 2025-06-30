@@ -1,6 +1,13 @@
 #include "StaffRatingWidget.h"
 #include "../common/UIStyleManager.h"
 #include <QTimer>
+#include <QFileDialog>
+#include <QTextStream>
+#include <QDate>
+#include <QFile>
+#include <QGridLayout>
+#include <QStringConverter>
+#include <QBrush>
 
 StaffRatingWidget::StaffRatingWidget(QWidget *parent)
     : QWidget(parent)
@@ -124,10 +131,14 @@ void StaffRatingWidget::setupUI()
     
     // 连接信号槽
     connect(m_btnRefresh, &QPushButton::clicked, this, &StaffRatingWidget::onRefreshRatings);
-    connect(m_btnExport, &QPushButton::clicked, [this]() { QMessageBox::information(this, "提示", "导出评价功能待实现"); });
-    connect(m_btnViewDetails, &QPushButton::clicked, [this]() { QMessageBox::information(this, "提示", "查看评价详情功能待实现"); });
-    connect(m_btnStaffStats, &QPushButton::clicked, [this]() { QMessageBox::information(this, "提示", "客服统计功能待实现"); });
+    connect(m_btnExport, &QPushButton::clicked, this, &StaffRatingWidget::onExportRatings);
+    connect(m_btnViewDetails, &QPushButton::clicked, this, &StaffRatingWidget::onViewRatingDetails);
+    connect(m_btnStaffStats, &QPushButton::clicked, this, &StaffRatingWidget::onShowStaffStats);
     connect(m_btnSearch, &QPushButton::clicked, this, &StaffRatingWidget::onSearchRatings);
+    connect(m_ratingTable, &QTableWidget::itemSelectionChanged, this, &StaffRatingWidget::onRatingSelectionChanged);
+    
+    // 初始状态：禁用查看详情按钮
+    m_btnViewDetails->setEnabled(false);
 }
 
 void StaffRatingWidget::setupStatsPanel()
@@ -425,17 +436,137 @@ void StaffRatingWidget::onSearchRatings()
     QMessageBox::information(this, "提示", "搜索功能开发中...");
 }
 
-// 其他槽函数的简化实现
-void StaffRatingWidget::onRatingSelectionChanged() { /* 暂时留空 */ }
-void StaffRatingWidget::onExportRatings() { QMessageBox::information(this, "提示", "功能开发中..."); }
-void StaffRatingWidget::onViewRatingDetails() { QMessageBox::information(this, "提示", "功能开发中..."); }
-void StaffRatingWidget::onShowStaffStats() { QMessageBox::information(this, "提示", "功能开发中..."); }
-void StaffRatingWidget::onDateRangeChanged() { /* 暂时留空 */ }
-void StaffRatingWidget::setupRatingChart() { /* 暂时留空 */ }
-void StaffRatingWidget::updateRatingChart() { /* 暂时留空 */ }
-void StaffRatingWidget::showRatingDetailsDialog(const SessionRating& rating) { Q_UNUSED(rating); QMessageBox::information(this, "提示", "功能开发中..."); }
+void StaffRatingWidget::onRatingSelectionChanged() 
+{
+    int currentRow = m_ratingTable->currentRow();
+    bool hasSelection = (currentRow >= 0 && currentRow < m_ratings.size());
+    m_btnViewDetails->setEnabled(hasSelection);
+}
 
-// ========== 对话框类的简化实现 ==========
+void StaffRatingWidget::onExportRatings() 
+{
+    QString fileName = QFileDialog::getSaveFileName(this, 
+                                                   "导出评价数据", 
+                                                   QString("ratings_%1.csv").arg(QDate::currentDate().toString("yyyyMMdd")),
+                                                   "CSV文件 (*.csv)");
+    
+    if (!fileName.isEmpty()) {
+        QFile file(fileName);
+        if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+                         QTextStream stream(&file);
+             stream.setEncoding(QStringConverter::Utf8);
+            
+            // 写入表头
+            stream << "患者,客服,评分,评价内容,评价时间,会话ID\n";
+            
+            // 获取用户信息
+            QList<UserInfo> users = m_dbManager->getAllUsers();
+            QMap<int, UserInfo> userMap;
+            for (const UserInfo& user : users) {
+                userMap[user.id] = user;
+            }
+            
+            // 写入数据
+            for (const SessionRating& rating : m_ratings) {
+                int patientIdInt = rating.patientId.toInt();
+                int staffIdInt = rating.staffId.toInt();
+                
+                QString patientName = userMap.contains(patientIdInt) ? 
+                    (userMap[patientIdInt].realName.isEmpty() ? userMap[patientIdInt].username : userMap[patientIdInt].realName) : 
+                    QString("患者%1").arg(rating.patientId);
+                QString staffName = userMap.contains(staffIdInt) ? 
+                    (userMap[staffIdInt].realName.isEmpty() ? userMap[staffIdInt].username : userMap[staffIdInt].realName) : 
+                    QString("客服%1").arg(rating.staffId);
+                
+                QString commentEscaped = rating.comment;
+                commentEscaped.replace("\"", "\"\""); // CSV转义
+                
+                stream << QString("%1,%2,%3,\"%4\",%5,%6\n")
+                         .arg(patientName)
+                         .arg(staffName)
+                         .arg(rating.rating)
+                         .arg(commentEscaped)
+                         .arg(rating.createdAt.toString("yyyy-MM-dd hh:mm:ss"))
+                         .arg(rating.sessionId);
+            }
+            
+            file.close();
+            QMessageBox::information(this, "成功", QString("评价数据已导出到：%1").arg(fileName));
+        } else {
+            QMessageBox::critical(this, "错误", "导出文件失败！");
+        }
+    }
+}
+
+void StaffRatingWidget::onViewRatingDetails() 
+{
+    int currentRow = m_ratingTable->currentRow();
+    if (currentRow < 0 || currentRow >= m_ratings.size()) {
+        QMessageBox::warning(this, "提示", "请先选择要查看的评价！");
+        return;
+    }
+    
+    SessionRating rating = m_ratings[currentRow];
+    
+    // 获取患者和客服信息
+    QList<UserInfo> users = m_dbManager->getAllUsers();
+    UserInfo patient, staff;
+    
+    for (const UserInfo& user : users) {
+        if (user.id == rating.patientId.toInt()) {
+            patient = user;
+        }
+        if (user.id == rating.staffId.toInt()) {
+            staff = user;
+        }
+    }
+    
+    RatingDetailsDialog dialog(rating, staff, patient, this);
+    dialog.exec();
+}
+
+void StaffRatingWidget::onShowStaffStats() 
+{
+    StaffStatsDialog dialog(m_dbManager, this);
+    dialog.exec();
+}
+
+void StaffRatingWidget::onDateRangeChanged() 
+{
+    // 当日期范围改变时，重新加载数据
+    loadRatings();
+}
+
+void StaffRatingWidget::setupRatingChart() 
+{
+    // 预留的图表功能，暂时不实现
+}
+
+void StaffRatingWidget::updateRatingChart() 
+{
+    // 预留的图表功能，暂时不实现
+}
+
+void StaffRatingWidget::showRatingDetailsDialog(const SessionRating& rating) 
+{
+    // 获取患者和客服信息
+    QList<UserInfo> users = m_dbManager->getAllUsers();
+    UserInfo patient, staff;
+    
+    for (const UserInfo& user : users) {
+        if (user.id == rating.patientId.toInt()) {
+            patient = user;
+        }
+        if (user.id == rating.staffId.toInt()) {
+            staff = user;
+        }
+    }
+    
+    RatingDetailsDialog dialog(rating, staff, patient, this);
+    dialog.exec();
+}
+
+// ========== 对话框类的完整实现 ==========
 
 RatingDetailsDialog::RatingDetailsDialog(const SessionRating& rating, const UserInfo& staff, const UserInfo& patient, QWidget *parent)
     : QDialog(parent)
@@ -443,38 +574,263 @@ RatingDetailsDialog::RatingDetailsDialog(const SessionRating& rating, const User
     , m_staff(staff)
     , m_patient(patient)
 {
-    setWindowTitle("评价详情（开发中）");
-    resize(300, 200);
-    
-    QVBoxLayout* layout = new QVBoxLayout(this);
-    layout->addWidget(new QLabel("评价详情功能正在开发中...", this));
-    
-    QPushButton* closeButton = new QPushButton("关闭", this);
-    connect(closeButton, &QPushButton::clicked, this, &QDialog::accept);
-    layout->addWidget(closeButton);
+    setWindowTitle("评价详情");
+    resize(500, 400);
+    setupUI();
 }
 
-void RatingDetailsDialog::setupUI() { /* 简化实现 */ }
+void RatingDetailsDialog::setupUI() 
+{
+    m_mainLayout = new QVBoxLayout(this);
+    
+    // 标题
+    QLabel* titleLabel = new QLabel("会话评价详情", this);
+    titleLabel->setStyleSheet("font-size: 16px; font-weight: bold; color: #2C3E50; margin-bottom: 10px;");
+    titleLabel->setAlignment(Qt::AlignCenter);
+    m_mainLayout->addWidget(titleLabel);
+    
+    // 基本信息区域
+    QGroupBox* infoGroup = new QGroupBox("基本信息", this);
+    QGridLayout* infoLayout = new QGridLayout(infoGroup);
+    
+    // 患者信息
+    m_patientLabel = new QLabel(QString("患者: %1 (%2)")
+                               .arg(m_patient.realName.isEmpty() ? m_patient.username : m_patient.realName)
+                               .arg(m_patient.username), this);
+    infoLayout->addWidget(m_patientLabel, 0, 0, 1, 2);
+    
+    // 客服信息
+    m_staffLabel = new QLabel(QString("客服: %1 (%2)")
+                             .arg(m_staff.realName.isEmpty() ? m_staff.username : m_staff.realName)
+                             .arg(m_staff.username), this);
+    infoLayout->addWidget(m_staffLabel, 1, 0, 1, 2);
+    
+    // 会话信息
+    m_sessionLabel = new QLabel(QString("会话ID: %1").arg(m_rating.sessionId), this);
+    infoLayout->addWidget(m_sessionLabel, 2, 0);
+    
+    // 评价时间
+    m_timeLabel = new QLabel(QString("评价时间: %1").arg(m_rating.createdAt.toString("yyyy-MM-dd hh:mm:ss")), this);
+    infoLayout->addWidget(m_timeLabel, 2, 1);
+    
+    m_mainLayout->addWidget(infoGroup);
+    
+    // 评分区域
+    QGroupBox* ratingGroup = new QGroupBox("评分", this);
+    QHBoxLayout* ratingLayout = new QHBoxLayout(ratingGroup);
+    
+    QString stars = QString("⭐").repeated(m_rating.rating);
+    QString emptyStars = QString("☆").repeated(5 - m_rating.rating);
+    m_ratingLabel = new QLabel(QString("%1%2 (%3/5分)").arg(stars).arg(emptyStars).arg(m_rating.rating), this);
+    m_ratingLabel->setStyleSheet("font-size: 18px; color: #F39C12;");
+    ratingLayout->addWidget(m_ratingLabel);
+    ratingLayout->addStretch();
+    
+    m_mainLayout->addWidget(ratingGroup);
+    
+    // 评价内容区域
+    QGroupBox* commentGroup = new QGroupBox("评价内容", this);
+    QVBoxLayout* commentLayout = new QVBoxLayout(commentGroup);
+    
+    m_commentEdit = new QTextEdit(this);
+    m_commentEdit->setPlainText(m_rating.comment);
+    m_commentEdit->setReadOnly(true);
+    m_commentEdit->setMaximumHeight(120);
+    commentLayout->addWidget(m_commentEdit);
+    
+    m_mainLayout->addWidget(commentGroup);
+    
+    // 按钮区域
+    QHBoxLayout* buttonLayout = new QHBoxLayout;
+    buttonLayout->addStretch();
+    
+    m_closeButton = new QPushButton("关闭", this);
+    connect(m_closeButton, &QPushButton::clicked, this, &QDialog::accept);
+    buttonLayout->addWidget(m_closeButton);
+    
+    m_mainLayout->addLayout(buttonLayout);
+}
 
 StaffStatsDialog::StaffStatsDialog(DatabaseManager* dbManager, QWidget *parent)
     : QDialog(parent)
     , m_dbManager(dbManager)
 {
-    setWindowTitle("客服统计（开发中）");
-    resize(400, 300);
-    
-    QVBoxLayout* layout = new QVBoxLayout(this);
-    layout->addWidget(new QLabel("客服统计功能正在开发中...", this));
-    
-    QPushButton* closeButton = new QPushButton("关闭", this);
-    connect(closeButton, &QPushButton::clicked, this, &QDialog::accept);
-    layout->addWidget(closeButton);
+    setWindowTitle("客服评价统计");
+    resize(700, 500);
+    setupUI();
+    loadStaffStats();
 }
 
-void StaffStatsDialog::setupUI() { /* 简化实现 */ }
-void StaffStatsDialog::onRefreshStats() { /* 简化实现 */ }
-void StaffStatsDialog::onStaffSelectionChanged() { /* 简化实现 */ }
-void StaffStatsDialog::loadStaffStats() { /* 简化实现 */ }
-void StaffStatsDialog::addStaffToTable(int row, const UserInfo& staff, double avgRating, int totalRatings) { Q_UNUSED(row); Q_UNUSED(staff); Q_UNUSED(avgRating); Q_UNUSED(totalRatings); }
+void StaffStatsDialog::setupUI() 
+{
+    m_mainLayout = new QVBoxLayout(this);
+    
+    // 标题
+    QLabel* titleLabel = new QLabel("客服评价统计", this);
+    titleLabel->setStyleSheet("font-size: 16px; font-weight: bold; color: #2C3E50; margin-bottom: 10px;");
+    titleLabel->setAlignment(Qt::AlignCenter);
+    m_mainLayout->addWidget(titleLabel);
+    
+    // 工具栏
+    QHBoxLayout* toolLayout = new QHBoxLayout;
+    
+    m_refreshButton = new QPushButton("🔄 刷新", this);
+    connect(m_refreshButton, &QPushButton::clicked, this, &StaffStatsDialog::onRefreshStats);
+    toolLayout->addWidget(m_refreshButton);
+    toolLayout->addStretch();
+    
+    m_mainLayout->addLayout(toolLayout);
+    
+    // 统计表格
+    m_staffTable = new QTableWidget(this);
+    m_staffTable->setColumnCount(6);
+    QStringList headers = {"客服姓名", "用户名", "总评价数", "平均评分", "5星数", "1-2星数"};
+    m_staffTable->setHorizontalHeaderLabels(headers);
+    
+    // 设置表格属性
+    m_staffTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_staffTable->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_staffTable->setAlternatingRowColors(true);
+    m_staffTable->setSortingEnabled(true);
+    m_staffTable->horizontalHeader()->setStretchLastSection(true);
+    
+    connect(m_staffTable, &QTableWidget::itemSelectionChanged, this, &StaffStatsDialog::onStaffSelectionChanged);
+    
+    m_mainLayout->addWidget(m_staffTable);
+    
+    // 统计信息
+    m_statsLabel = new QLabel("正在加载统计信息...", this);
+    m_statsLabel->setStyleSheet("color: #7F8C8D; font-size: 12px;");
+    m_mainLayout->addWidget(m_statsLabel);
+    
+    // 按钮区域
+    QHBoxLayout* buttonLayout = new QHBoxLayout;
+    buttonLayout->addStretch();
+    
+    m_closeButton = new QPushButton("关闭", this);
+    connect(m_closeButton, &QPushButton::clicked, this, &QDialog::accept);
+    buttonLayout->addWidget(m_closeButton);
+    
+    m_mainLayout->addLayout(buttonLayout);
+}
+
+void StaffStatsDialog::onRefreshStats() 
+{
+    loadStaffStats();
+}
+
+void StaffStatsDialog::onStaffSelectionChanged() 
+{
+    // 可以在这里添加选中客服后的详细信息显示
+}
+
+void StaffStatsDialog::loadStaffStats() 
+{
+    if (!m_dbManager) return;
+    
+    // 获取所有客服
+    QList<UserInfo> staffList = m_dbManager->getUsersByRole("客服");
+    
+    // 获取所有评价
+    QList<SessionRating> allRatings = m_dbManager->getAllSessionRatings();
+    
+    // 统计每个客服的评价数据
+    QMap<int, QList<int>> staffRatings; // staffId -> ratings list
+    
+    for (const SessionRating& rating : allRatings) {
+        int staffId = rating.staffId.toInt();
+        staffRatings[staffId].append(rating.rating);
+    }
+    
+    // 更新表格
+    m_staffTable->setRowCount(staffList.size());
+    
+    int totalStaff = 0;
+    int totalRatings = 0;
+    double totalScore = 0;
+    
+    for (int i = 0; i < staffList.size(); ++i) {
+        const UserInfo& staff = staffList[i];
+        const QList<int>& ratings = staffRatings[staff.id];
+        
+        if (!ratings.isEmpty()) {
+            // 计算统计数据
+            double avgRating = 0;
+            int fiveStarCount = 0;
+            int lowStarCount = 0; // 1-2星
+            
+            for (int rating : ratings) {
+                avgRating += rating;
+                if (rating == 5) fiveStarCount++;
+                if (rating <= 2) lowStarCount++;
+                totalScore += rating;
+            }
+            avgRating /= ratings.size();
+            totalRatings += ratings.size();
+            totalStaff++;
+            
+            addStaffToTable(i, staff, avgRating, ratings.size());
+            
+            // 设置额外数据
+            m_staffTable->setItem(i, 4, new QTableWidgetItem(QString::number(fiveStarCount)));
+            m_staffTable->setItem(i, 5, new QTableWidgetItem(QString::number(lowStarCount)));
+            
+            // 根据评分设置行颜色
+            QColor rowColor;
+            if (avgRating >= 4.5) {
+                rowColor = QColor(212, 237, 218); // 绿色 - 优秀
+            } else if (avgRating >= 3.5) {
+                rowColor = QColor(255, 243, 205); // 黄色 - 良好
+            } else {
+                rowColor = QColor(248, 215, 218); // 红色 - 需要提升
+            }
+            
+            for (int j = 0; j < m_staffTable->columnCount(); ++j) {
+                if (m_staffTable->item(i, j)) {
+                    m_staffTable->item(i, j)->setBackground(QBrush(rowColor));
+                }
+            }
+        } else {
+            // 没有评价的客服
+            addStaffToTable(i, staff, 0, 0);
+            m_staffTable->setItem(i, 4, new QTableWidgetItem("0"));
+            m_staffTable->setItem(i, 5, new QTableWidgetItem("0"));
+        }
+    }
+    
+    // 更新统计信息
+    double overallAvg = totalRatings > 0 ? totalScore / totalRatings : 0;
+    m_statsLabel->setText(QString("共 %1 位客服，总计 %2 条评价，整体平均评分: %3")
+                         .arg(staffList.size())
+                         .arg(totalRatings)
+                         .arg(overallAvg, 0, 'f', 1));
+}
+
+void StaffStatsDialog::addStaffToTable(int row, const UserInfo& staff, double avgRating, int totalRatings) 
+{
+    // 客服姓名
+    QString displayName = staff.realName.isEmpty() ? staff.username : staff.realName;
+    m_staffTable->setItem(row, 0, new QTableWidgetItem(displayName));
+    
+    // 用户名
+    m_staffTable->setItem(row, 1, new QTableWidgetItem(staff.username));
+    
+    // 总评价数
+    m_staffTable->setItem(row, 2, new QTableWidgetItem(QString::number(totalRatings)));
+    
+    // 平均评分
+    QString avgText = totalRatings > 0 ? QString::number(avgRating, 'f', 1) : "--";
+    QTableWidgetItem* avgItem = new QTableWidgetItem(avgText);
+    if (totalRatings > 0) {
+        if (avgRating >= 4.5) {
+            avgItem->setForeground(QColor("#27AE60")); // 绿色
+        } else if (avgRating <= 3.0) {
+            avgItem->setForeground(QColor("#E74C3C")); // 红色
+        } else {
+            avgItem->setForeground(QColor("#F39C12")); // 橙色
+        }
+    }
+    m_staffTable->setItem(row, 3, avgItem);
+}
 
 // MOC generated automatically

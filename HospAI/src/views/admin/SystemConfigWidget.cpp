@@ -4,6 +4,9 @@
 #include <QMessageBox>
 #include <QInputDialog>
 #include <QDateTime>
+#include <QFileDialog>
+#include <QSettings>
+#include <QDate>
 
 SystemConfigWidget::SystemConfigWidget(QWidget *parent)
     : QWidget(parent)
@@ -284,12 +287,127 @@ void SystemConfigWidget::onResetConfig()
 
 void SystemConfigWidget::onImportConfig()
 {
-    QMessageBox::information(this, "导入配置", "配置导入功能将在后续版本中实现");
+    QString fileName = QFileDialog::getOpenFileName(this,
+                                                   "导入系统配置",
+                                                   "",
+                                                   "配置文件 (*.ini *.conf);;所有文件 (*.*)");
+    
+    if (!fileName.isEmpty()) {
+        QSettings importSettings(fileName, QSettings::IniFormat);
+        
+        if (importSettings.status() != QSettings::NoError) {
+            QMessageBox::critical(this, "导入失败", "无法读取配置文件！");
+            return;
+        }
+        
+        // 确认导入
+        int ret = QMessageBox::question(this, "确认导入",
+                                       "导入配置将覆盖当前设置，是否继续？",
+                                       QMessageBox::Yes | QMessageBox::No);
+        
+        if (ret == QMessageBox::Yes) {
+            try {
+                // 导入常规设置
+                m_systemName->setText(importSettings.value("general/systemName", "医院智慧客服系统").toString());
+                m_systemVersion->setText(importSettings.value("general/systemVersion", "1.0.0").toString());
+                m_maxUsers->setValue(importSettings.value("general/maxUsers", 1000).toInt());
+                m_sessionTimeout->setValue(importSettings.value("general/sessionTimeout", 30).toInt());
+                m_enableLogging->setChecked(importSettings.value("general/enableLogging", true).toBool());
+                m_enableBackup->setChecked(importSettings.value("general/enableBackup", true).toBool());
+                m_logLevel->setCurrentText(importSettings.value("general/logLevel", "Info").toString());
+                
+                // 导入AI配置
+                m_aiConfidence->setValue(importSettings.value("ai/confidence", 75).toInt());
+                
+                // 导入FAQ数据
+                int faqSize = importSettings.beginReadArray("faq");
+                m_faqTable->setRowCount(faqSize);
+                
+                for (int i = 0; i < faqSize; ++i) {
+                    importSettings.setArrayIndex(i);
+                    m_faqTable->setItem(i, 0, new QTableWidgetItem(importSettings.value("question").toString()));
+                    m_faqTable->setItem(i, 1, new QTableWidgetItem(importSettings.value("answer").toString()));
+                    m_faqTable->setItem(i, 2, new QTableWidgetItem(importSettings.value("category").toString()));
+                }
+                importSettings.endArray();
+                
+                // 导入科室数据
+                int deptSize = importSettings.beginReadArray("departments");
+                m_departmentTable->setRowCount(deptSize);
+                
+                for (int i = 0; i < deptSize; ++i) {
+                    importSettings.setArrayIndex(i);
+                    m_departmentTable->setItem(i, 0, new QTableWidgetItem(importSettings.value("name").toString()));
+                    m_departmentTable->setItem(i, 1, new QTableWidgetItem(importSettings.value("location").toString()));
+                    m_departmentTable->setItem(i, 2, new QTableWidgetItem(importSettings.value("phone").toString()));
+                    m_departmentTable->setItem(i, 3, new QTableWidgetItem(importSettings.value("description").toString()));
+                }
+                importSettings.endArray();
+                
+                QMessageBox::information(this, "导入成功", "配置已成功导入！");
+                
+            } catch (...) {
+                QMessageBox::critical(this, "导入失败", "配置文件格式错误！");
+            }
+        }
+    }
 }
 
 void SystemConfigWidget::onExportConfig()
 {
-    QMessageBox::information(this, "导出配置", "配置导出功能将在后续版本中实现");
+    QString fileName = QFileDialog::getSaveFileName(this,
+                                                   "导出系统配置",
+                                                   QString("system_config_%1.ini").arg(QDate::currentDate().toString("yyyyMMdd")),
+                                                   "配置文件 (*.ini)");
+    
+    if (!fileName.isEmpty()) {
+        QSettings exportSettings(fileName, QSettings::IniFormat);
+        
+        // 导出常规设置
+        exportSettings.setValue("general/systemName", m_systemName->text());
+        exportSettings.setValue("general/systemVersion", m_systemVersion->text());
+        exportSettings.setValue("general/maxUsers", m_maxUsers->value());
+        exportSettings.setValue("general/sessionTimeout", m_sessionTimeout->value());
+        exportSettings.setValue("general/enableLogging", m_enableLogging->isChecked());
+        exportSettings.setValue("general/enableBackup", m_enableBackup->isChecked());
+        exportSettings.setValue("general/logLevel", m_logLevel->currentText());
+        
+        // 导出AI配置
+        exportSettings.setValue("ai/confidence", m_aiConfidence->value());
+        
+        // 导出FAQ数据
+        exportSettings.beginWriteArray("faq", m_faqTable->rowCount());
+        for (int i = 0; i < m_faqTable->rowCount(); ++i) {
+            exportSettings.setArrayIndex(i);
+            exportSettings.setValue("question", m_faqTable->item(i, 0) ? m_faqTable->item(i, 0)->text() : "");
+            exportSettings.setValue("answer", m_faqTable->item(i, 1) ? m_faqTable->item(i, 1)->text() : "");
+            exportSettings.setValue("category", m_faqTable->item(i, 2) ? m_faqTable->item(i, 2)->text() : "");
+        }
+        exportSettings.endArray();
+        
+        // 导出科室数据
+        exportSettings.beginWriteArray("departments", m_departmentTable->rowCount());
+        for (int i = 0; i < m_departmentTable->rowCount(); ++i) {
+            exportSettings.setArrayIndex(i);
+            exportSettings.setValue("name", m_departmentTable->item(i, 0) ? m_departmentTable->item(i, 0)->text() : "");
+            exportSettings.setValue("location", m_departmentTable->item(i, 1) ? m_departmentTable->item(i, 1)->text() : "");
+            exportSettings.setValue("phone", m_departmentTable->item(i, 2) ? m_departmentTable->item(i, 2)->text() : "");
+            exportSettings.setValue("description", m_departmentTable->item(i, 3) ? m_departmentTable->item(i, 3)->text() : "");
+        }
+        exportSettings.endArray();
+        
+        // 添加导出时间戳
+        exportSettings.setValue("export/timestamp", QDateTime::currentDateTime().toString(Qt::ISODate));
+        exportSettings.setValue("export/version", "1.0");
+        
+        exportSettings.sync();
+        
+        if (exportSettings.status() == QSettings::NoError) {
+            QMessageBox::information(this, "导出成功", QString("配置已导出到：%1").arg(fileName));
+        } else {
+            QMessageBox::critical(this, "导出失败", "无法写入配置文件！");
+        }
+    }
 }
 
 void SystemConfigWidget::onAddFAQ()
