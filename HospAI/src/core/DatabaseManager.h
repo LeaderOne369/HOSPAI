@@ -105,6 +105,12 @@ public:
     bool updateUserInfo(const UserInfo& userInfo);
     bool changePassword(int userId, const QString& oldPassword, const QString& newPassword);
     
+    // 忘记密码相关
+    UserInfo getUserByEmail(const QString& email);
+    UserInfo getUserByUsername(const QString& username);
+    bool resetPassword(const QString& email, const QString& newPassword);
+    bool resetPasswordByUsername(const QString& username, const QString& newPassword);
+    
     // 聊天会话管理
     int createChatSession(int patientId, int staffId = 0);
     bool updateChatSession(int sessionId, int staffId);

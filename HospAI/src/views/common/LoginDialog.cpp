@@ -1,6 +1,7 @@
 #include "LoginDialog.h"
 #include "ui_LoginDialog.h"
 #include "RegisterDialog.h"
+#include "ForgotPasswordDialog.h"
 #include <QMessageBox>
 #include <QKeyEvent>
 #include <QTimer>
@@ -148,9 +149,8 @@ void LoginDialog::onRegisterClicked()
 
 void LoginDialog::onForgotPasswordClicked()
 {
-    QMessageBox::information(this, "忘记密码", 
-                           "密码重置功能正在开发中...\n\n"
-                           "如需重置密码，请联系系统管理员。");
+    ForgotPasswordDialog forgotPasswordDialog(this);
+    forgotPasswordDialog.exec();
 }
 
 void LoginDialog::onRoleChanged()

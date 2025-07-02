@@ -199,17 +199,20 @@ bool DatabaseManager::createTables()
     query.exec("ALTER TABLE chat_sessions ADD COLUMN ended_at DATETIME");
     query.exec("ALTER TABLE chat_sessions ADD COLUMN duration INTEGER DEFAULT 0");
     
-    // 创建默认管理员账户（如果不存在）
-    if (!isUsernameExists("admin")) {
-        registerUser("admin", "admin123", "admin@hospai.com", "", "管理员", "系统管理员");
+    // 创建默认测试账户（如果不存在）
+    // 患者端测试账号
+    if (!isUsernameExists("p123")) {
+        registerUser("p123", "111111", "patient123@hospai.com", "13800138001", "患者", "测试患者");
     }
     
-    // 创建测试客服账户
-    if (!isUsernameExists("staff1")) {
-        registerUser("staff1", "123456", "staff1@hospai.com", "", "客服", "客服小王");
+    // 客服端测试账号
+    if (!isUsernameExists("s123")) {
+        registerUser("s123", "111111", "staff123@hospai.com", "13800138002", "客服", "测试客服");
     }
-    if (!isUsernameExists("staff2")) {
-        registerUser("staff2", "123456", "staff2@hospai.com", "", "客服", "客服小李");
+    
+    // 管理员端测试账号
+    if (!isUsernameExists("a123")) {
+        registerUser("a123", "111111", "admin123@hospai.com", "13800138003", "管理员", "测试管理员");
     }
     
     return true;
@@ -1047,7 +1050,7 @@ bool DatabaseManager::updateUserInfo(const UserInfo& userInfo)
 
 bool DatabaseManager::changePassword(int userId, const QString& oldPassword, const QString& newPassword)
 {
-    // 先验证旧密码
+    // 首先验证旧密码
     QSqlQuery query(m_database);
     query.prepare("SELECT password_hash FROM users WHERE id = ?");
     query.addBindValue(userId);
@@ -1056,12 +1059,12 @@ bool DatabaseManager::changePassword(int userId, const QString& oldPassword, con
         return false;
     }
     
-    QString storedHash = query.value(0).toString();
-    if (!verifyPassword(oldPassword, storedHash)) {
+    QString currentHash = query.value(0).toString();
+    if (!verifyPassword(oldPassword, currentHash)) {
         return false;
     }
     
-    // 更新新密码
+    // 更新为新密码
     query.prepare("UPDATE users SET password_hash = ? WHERE id = ?");
     query.addBindValue(hashPassword(newPassword));
     query.addBindValue(userId);
@@ -1250,4 +1253,100 @@ QList<SessionRating> DatabaseManager::getAllSessionRatings()
     }
     
     return ratings;
+}
+
+// ========== 忘记密码相关方法 ==========
+
+UserInfo DatabaseManager::getUserByEmail(const QString& email)
+{
+    UserInfo userInfo;
+    
+    QSqlQuery query(m_database);
+    query.prepare(R"(
+        SELECT id, username, email, phone, role, real_name, created_at, last_login, status, avatar_path
+        FROM users 
+        WHERE email = ? AND status = 1
+    )");
+    
+    query.addBindValue(email);
+    
+    if (query.exec() && query.next()) {
+        userInfo.id = query.value("id").toInt();
+        userInfo.username = query.value("username").toString();
+        userInfo.email = query.value("email").toString();
+        userInfo.phone = query.value("phone").toString();
+        userInfo.role = query.value("role").toString();
+        userInfo.realName = query.value("real_name").toString();
+        userInfo.createdAt = query.value("created_at").toDateTime();
+        userInfo.lastLogin = query.value("last_login").toDateTime();
+        userInfo.status = query.value("status").toInt();
+        userInfo.avatarPath = query.value("avatar_path").toString();
+        userInfo.isActive = (userInfo.status == 1);
+        userInfo.name = userInfo.realName.isEmpty() ? userInfo.username : userInfo.realName;
+        userInfo.userId = QString::number(userInfo.id);
+        userInfo.lastLoginTime = userInfo.lastLogin;
+    }
+    
+    return userInfo;
+}
+
+UserInfo DatabaseManager::getUserByUsername(const QString& username)
+{
+    UserInfo userInfo;
+    
+    QSqlQuery query(m_database);
+    query.prepare(R"(
+        SELECT id, username, email, phone, role, real_name, created_at, last_login, status, avatar_path
+        FROM users 
+        WHERE username = ? AND status = 1
+    )");
+    
+    query.addBindValue(username);
+    
+    if (query.exec() && query.next()) {
+        userInfo.id = query.value("id").toInt();
+        userInfo.username = query.value("username").toString();
+        userInfo.email = query.value("email").toString();
+        userInfo.phone = query.value("phone").toString();
+        userInfo.role = query.value("role").toString();
+        userInfo.realName = query.value("real_name").toString();
+        userInfo.createdAt = query.value("created_at").toDateTime();
+        userInfo.lastLogin = query.value("last_login").toDateTime();
+        userInfo.status = query.value("status").toInt();
+        userInfo.avatarPath = query.value("avatar_path").toString();
+        userInfo.isActive = (userInfo.status == 1);
+        userInfo.name = userInfo.realName.isEmpty() ? userInfo.username : userInfo.realName;
+        userInfo.userId = QString::number(userInfo.id);
+        userInfo.lastLoginTime = userInfo.lastLogin;
+    }
+    
+    return userInfo;
+}
+
+bool DatabaseManager::resetPassword(const QString& email, const QString& newPassword)
+{
+    QSqlQuery query(m_database);
+    query.prepare("UPDATE users SET password_hash = ? WHERE email = ? AND status = 1");
+    query.addBindValue(hashPassword(newPassword));
+    query.addBindValue(email);
+    
+    if (query.exec()) {
+        return query.numRowsAffected() > 0;
+    }
+    
+    return false;
+}
+
+bool DatabaseManager::resetPasswordByUsername(const QString& username, const QString& newPassword)
+{
+    QSqlQuery query(m_database);
+    query.prepare("UPDATE users SET password_hash = ? WHERE username = ? AND status = 1");
+    query.addBindValue(hashPassword(newPassword));
+    query.addBindValue(username);
+    
+    if (query.exec()) {
+        return query.numRowsAffected() > 0;
+    }
+    
+    return false;
 } 

@@ -23,6 +23,7 @@ set(PROJECT_SOURCES
         src/views/common/UIStyleManager.cpp
         src/views/common/LoginDialog.cpp
         src/views/common/RegisterDialog.cpp
+        src/views/common/ForgotPasswordDialog.cpp
         src/views/common/SettingsDialog.cpp
         
         # Patient view components
@@ -52,9 +53,17 @@ set(PROJECT_SOURCES
         src/views/admin/AdminMainWidget.cpp
 )
 
+set(PROJECT_UI_FILES
+        mainwindow.ui
+        src/views/common/LoginDialog.ui
+        src/views/common/ForgotPasswordDialog.ui
+        src/views/common/SettingsDialog.ui
+)
+
 qt_add_executable(HospAI
     MANUAL_FINALIZATION
     ${PROJECT_SOURCES}
+    ${PROJECT_UI_FILES}
 )
 
 target_link_libraries(HospAI PRIVATE Qt6::Core Qt6::Widgets Qt6::Sql Qt6::Network)

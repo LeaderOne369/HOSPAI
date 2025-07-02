@@ -39,6 +39,7 @@ HEADERS += mainwindow.h \
            src/views/common/HospitalNavigationWidget.h \
            src/views/common/LoginDialog.h \
            src/views/common/RegisterDialog.h \
+           src/views/common/ForgotPasswordDialog.h \
            src/views/common/RoleSelector.h \
            src/views/common/SettingsDialog.h \
            src/views/common/SideMenuWidget.h \
@@ -62,6 +63,7 @@ HEADERS += mainwindow.h \
            src/views/staff/StatsWidget.h
 FORMS += mainwindow.ui \
          src/views/common/LoginDialog.ui \
+         src/views/common/ForgotPasswordDialog.ui \
          src/views/common/SettingsDialog.ui
 SOURCES += main.cpp \
            mainwindow.cpp \
@@ -82,6 +84,7 @@ SOURCES += main.cpp \
            src/views/common/HospitalNavigationWidget.cpp \
            src/views/common/LoginDialog.cpp \
            src/views/common/RegisterDialog.cpp \
+           src/views/common/ForgotPasswordDialog.cpp \
            src/views/common/RoleSelector.cpp \
            src/views/common/SettingsDialog.cpp \
            src/views/common/SideMenuWidget.cpp \
